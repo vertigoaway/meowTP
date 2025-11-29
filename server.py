@@ -43,14 +43,26 @@ class UDPHandler(socketserver.BaseRequestHandler):
                 encrypt = True
                 clientPK = keychain[self.client_address[0]]["clientPK"]
                 msg = "meowtp shake "+self.client_address[0]
+            case "meow":
+                msg = "meowtp await ?"
+            case "up":
+                param = str(param.split("/")[-1::])
+
+            case "down":
+                param = param.split(" ")
+                sector = param[0].strip()
+                param = param.pop()
+                fileName = str(param.split("/")[-1::][0])
+                msg = lib.readSector(fileName,sector).decode("utf-8")
+                msg = "meowtp down "+msg
             case _:
-                msg = "meowtp null null"    
+                msg = "meowtp null ?"
 
         if keychain[self.client_address[0]]["encrypt"]:
+            print(len(msg))
             msg = lib.pubKeyEncrypt(msg.encode("utf-8"),clientPK)
         else:
             msg = msg.encode("utf-8")
-        print(msg)
         sock.sendto(msg, self.client_address)
 
 

@@ -16,7 +16,7 @@ encrypt = False
 skimp = False
 while not quit:
 
-    received = sock.recv(1024)
+    received = sock.recv(4096)
 
     if encrypt:
         received = lib.privKeyDecrypt(received, privKey)
@@ -30,16 +30,18 @@ while not quit:
         case "hand":
             skimp = True
             srvPubKey = serialization.load_pem_public_key(param.encode("utf-8"))
-            print("server public key acquired")
             msg = bytes("meowtp shake? "+pem.decode("utf-8"),"utf-8")
-            print("sending our public key")
         case "shake":
-            print("server acquired our public key")
             print("key exchange completed")
-            msg = "meowtp meow meow meow meow"
+            msg = "meowtp meow ?"
+        case "await":
+            param = param.strip().split()[-1::]
+            msg = "meowtp down 0 test"
+        case "down":
+            #TODO: file reassmbler :sob:
+            print(param)
         case "null":
-            print("req we sent was outside the bounds of servers commands :(")
-            exit()
+            print("request param invalid")
     if encrypt:
         msg = lib.pubKeyEncrypt(bytes(msg,"utf-8"),srvPubKey)
 
@@ -47,3 +49,8 @@ while not quit:
         encrypt = True
         skimp = False
     sock.sendto(msg,("127.0.0.1",lib.udpPort))
+
+
+
+def interface():
+    print("")
