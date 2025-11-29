@@ -3,9 +3,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa # pyright: ignore[repo
 from cryptography.hazmat.primitives import serialization # pyright: ignore[reportMissingImports] QUIET!!!
 from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]
 from cryptography.hazmat.primitives import hashes# pyright: ignore[reportMissingImports]
+import os
 #in this house we use reverse camel case
 udpPort = 6969
-
+keySize = 4096
+maxSectorSize = int((446)-32)
 initMsg = "meowtp hand? ?"
 greetMsg = "meowtp pk"# + pubkey
 
@@ -13,7 +15,7 @@ greetMsg = "meowtp pk"# + pubkey
 def createKeyPair():
     privKey = rsa.generate_private_key( #everytime program is started, a new key is used :3
         public_exponent = 65537,
-        key_size=4096
+        key_size=keySize
     )
     pubKey = privKey.public_key()
 
@@ -43,3 +45,17 @@ def privKeyDecrypt(msg, key):
         )
     msg = msg.decode("utf-8")
     return msg
+
+
+def readSector(fileName, sector):
+    
+    try:
+        sector = int(sector)
+    except:
+        size = os.path.getsize("./serving/"+fileName)
+        return size
+    file = open("./serving/"+fileName,"rb")
+    print(maxSectorSize,sector,maxSectorSize*sector)
+    file.seek(0,int(maxSectorSize*sector))
+    contents = file.read(maxSectorSize)
+    return contents
