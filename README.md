@@ -2,10 +2,8 @@ MeowTP!!!
 
 too early to write a proper readme
 
-client requests and recieves file(s)
-
-server fufills requests and sends file(s)
-
+client and server can transfer files bidirectionally
+only difference is one initiates the other waits
 library is general functions for meowTP both will use
 
 default port is 6969 cause im awesome
