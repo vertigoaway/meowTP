@@ -1,10 +1,5 @@
 import socket, sys, cryptography, lib, random # pyright: ignore[reportMissingImports]
-from cryptography.hazmat.primitives.asymmetric import rsa # pyright: ignore[reportMissingImports]
-from cryptography.hazmat.primitives import serialization # pyright: ignore[reportMissingImports] QUIET!!!
-from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]
-from cryptography.hazmat.primitives import hashes# pyright: ignore[reportMissingImports]
-#client! 
-#will probably be coded as procedurally oriented for now, i wanna get a working prototype
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 sock.sendto(bytes(lib.initMsg+"\n", "utf-8"), ("127.0.0.1", lib.udpPort))
@@ -28,20 +23,21 @@ while not quit:
     param = lib.getParams(received)
     
     match req:
-        case "hand":
+        case "hand":# keyexch pt 1
             skimp = True
             srvPubKey = lib.recvPubkey(param)
             msg = bytes("meowtp shake? "+pem.decode("utf-8"),"utf-8")
-        case "shake":
+        case "shake":#keyexch pt 2
             print("key exchange completed")
             msg = "meowtp meow ?"
-        case "await":
+        case "await": #sent when server is waiting for new request
             print(param)
         case "down":
             #TODO: file reassmbler :sob:
             print(param)
-        case "null":
-            print("request param invalid")
+        case _:
+            print("request param invalid D:")
+    
     if encrypt:
         msg = lib.pubKeyEncrypt(bytes(msg,"utf-8"),srvPubKey)
 
