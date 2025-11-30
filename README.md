@@ -29,3 +29,5 @@ objectives
   - ❌ refactor client to use async
   - ❌ use bytes instead of strings
   - ❌ detect and correct missing packets
+  - ❌ annotate code
+  - ❌ document functions
