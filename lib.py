@@ -46,6 +46,11 @@ def privKeyDecrypt(msg, key):
     msg = msg.decode("utf-8")
     return msg
 
+def recvPubkey(param):
+    clientPK = serialization.load_pem_public_key(''.join(x+' ' for x in param).encode("utf-8")) #holy one liner
+    return clientPK
+
+
 getParams = lambda msg: msg.split(" ")[2:]
 
 getReq = lambda msg: msg.split(" ")[1]
