@@ -24,26 +24,30 @@ while not quit:
     param = lib.getParams(received)
     msgs = []
     match req:
-        case "hand":# keyexch pt 1
+        case "reqKey":# we recieve server key and get requested for client key
             skimp = True
             srvPubKey = lib.recvPubkey(param)
-            msgs.append("meowtp shake? "+pem.decode("utf-8"))
-        case "shake":#keyexch pt 2
+            msgs.append("meowtp pKey "+pem.decode("utf-8"))
+        case "finKey":#ensure both can read messages
             print("key exchange completed")
-            msgs.append("meowtp meow ?")
-        case "await": #sent when server is waiting for new request
+            msgs.append("meowtp ready ?")
+        case "ready": #idle
             print(param)
-        case "down":
+
+        case "size": #size of a file previously requested is sent to us
+            size = int(param[-1])
+
+        case "down": #download a "sector" of file
             #TODO: file reassmbler :sob:
             print(param)
         case _:
-            print("request param invalid D:")
+            print("invalid request recieved D:")
     
 
 
 
     lib.msgHandler(msgs,srvPubKey, encrypt, sock, ("127.0.0.1",lib.udpPort))
 
-    if skimp: #sshhhhh me when im lazy
+    if skimp: #lazy? yeah lol
         encrypt = True
         skimp = False

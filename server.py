@@ -15,7 +15,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
 
         try: 
             if keychain[self.client_address[0]]["encrypt"]:
-                clientPK = keychain[self.client_address[0]]["clientPK"]#key was exchanged, assume all messages are encrypted
+                clientPK = keychain[self.client_address[0]]["clientPK"]#key was exchanged, all messages Should be encrypted
                 data = lib.privKeyDecrypt(data,privKey)
         except:
             keychain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
@@ -33,22 +33,31 @@ class UDPHandler(socketserver.BaseRequestHandler):
         print(req)
         msgs = []
         match req:
-            case "hand?":
-                msgs.append("meowtp hand "+pem.decode("utf-8"))
-            case "shake?":
+            case "reqKey":
+                msgs.append("meowtp reqKey "+pem.decode("utf-8"))
+            case "pKey":
                 keychain[self.client_address[0]] = {
                         "clientPK":lib.recvPubkey(param),
                         "encrypt":True}
                 encrypt = True
                 clientPK = keychain[self.client_address[0]]["clientPK"]
-                msgs.append("meowtp shake "+self.client_address[0])
+                msgs.append("meowtp finKey "+self.client_address[0])
+            
+            case "sizeOf":
+                size = lib.fileSize(param[-1])
+                msgs.append("meowtp size "+str(size))
+
             case "up": #sector sector fi contents
+
+
                 pass
 
             case "down": #down sector fi
                 print("man idk")
+
+            
             case _:
-                msgs.append("meowtp await ?")
+                msgs.append("meowtp ready ?")
 
         
         lib.msgHandler(msgs, clientPK,
