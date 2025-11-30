@@ -4,9 +4,7 @@ from cryptography.hazmat.primitives import serialization # pyright: ignore[repor
 from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]
 from cryptography.hazmat.primitives import hashes# pyright: ignore[reportMissingImports]
 
-def recvPubkey(param):
-    clientPK = serialization.load_pem_public_key(param.encode("utf-8"))
-    return clientPK
+
 class UDPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
@@ -20,46 +18,38 @@ class UDPHandler(socketserver.BaseRequestHandler):
                 clientPK = keychain[self.client_address[0]]["clientPK"]#key was exchanged, assume all messages are encrypted
                 data = lib.privKeyDecrypt(data,privKey)
         except:
-            keychain[self.client_address[0]] = {"encrypt":False} #no key exchanged, note it down
+            keychain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
         encrypt = keychain[self.client_address[0]]["encrypt"]
         try:
             data = data.decode("utf-8").strip()
         except:
-            1+1
-        tmp, req, param = data.split(" ", 2)
+            pass
 
-        if tmp!="meowtp" and not encrypt:
-            print("not a meowtp client, throwing connection out")
-            exit()
-        tmp=None
+
+        
+        param = lib.getParams(data)
+        req = lib.getReq(data)
         print("matching: "+req)
-        req = req.strip()
+        
         match req:
             case "hand?":
                 msg = "meowtp hand "+pem.decode("utf-8")
             case "shake?":
-                keychain[self.client_address[0]] = {"clientPK":recvPubkey(param),
-                                                "encrypt":True}
+                keychain[self.client_address[0]] = {
+                        "clientPK":lib.recvPubkey(param),
+                        "encrypt":True}
                 encrypt = True
                 clientPK = keychain[self.client_address[0]]["clientPK"]
                 msg = "meowtp shake "+self.client_address[0]
-            case "meow":
-                msg = "meowtp await ?"
             case "up":
-                param = str(param.split("/")[-1::])
+                fileName = str(param.split("/")[-1::][0])
 
             case "down":
-                param = param.split(" ")
-                sector = param[0].strip()
-                param = param.pop()
-                fileName = str(param.split("/")[-1::][0])
-                msg = lib.readSector(fileName,sector).decode("utf-8")
-                msg = "meowtp down "+msg
+                lib.getParams()
             case _:
-                msg = "meowtp null ?"
+                msg = "meowtp await ?"
 
         if keychain[self.client_address[0]]["encrypt"]:
-            print(len(msg))
             msg = lib.pubKeyEncrypt(msg.encode("utf-8"),clientPK)
         else:
             msg = msg.encode("utf-8")
