@@ -1,8 +1,24 @@
 import lib, socketserver, cryptography # pyright: ignore[reportMissingImports]
 
 
-class UDPHandler(socketserver.BaseRequestHandler):
 
+def msgHandler(msgs, clientPK, encrypt, sock, client_address):
+    if encrypt:
+        for i,msg in enumerate(msgs):
+            msgs[i] = lib.pubKeyEncrypt(msg.encode("utf-8"),clientPK)
+    
+    else:
+        for i,msg in enumerate(msgs):
+            msgs[i] = msg.encode("utf-8")
+    
+    
+    for msg in msgs:
+        sock.sendto(msg, client_address)
+    return
+
+
+class UDPHandler(socketserver.BaseRequestHandler):
+    
     def handle(self):
         data = self.request[0]
         sock = self.request[1]
@@ -15,6 +31,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
                 data = lib.privKeyDecrypt(data,privKey)
         except:
             keychain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
+            clientPK = None
         encrypt = keychain[self.client_address[0]]["encrypt"]
         try:
             data = data.decode("utf-8").strip()
@@ -25,31 +42,33 @@ class UDPHandler(socketserver.BaseRequestHandler):
         
         param = lib.getParams(data)
         req = lib.getReq(data)
-        print("matching: "+req)
-        
+        print(req)
+        msgs = []
         match req:
             case "hand?":
-                msg = "meowtp hand "+pem.decode("utf-8")
+                msgs.append("meowtp hand "+pem.decode("utf-8"))
             case "shake?":
                 keychain[self.client_address[0]] = {
                         "clientPK":lib.recvPubkey(param),
                         "encrypt":True}
                 encrypt = True
                 clientPK = keychain[self.client_address[0]]["clientPK"]
-                msg = "meowtp shake "+self.client_address[0]
-            case "up":
-                fileName = str(param.split("/")[-1::][0])
+                msgs.append("meowtp shake "+self.client_address[0])
+            case "up": #sector sector fi contents
+                pass
 
-            case "down":
-                lib.getParams()
+            case "down": #down sector fi
+                print("man idk")
             case _:
-                msg = "meowtp await ?"
+                msgs.append("meowtp await ?")
 
-        if keychain[self.client_address[0]]["encrypt"]:
-            msg = lib.pubKeyEncrypt(msg.encode("utf-8"),clientPK)
-        else:
-            msg = msg.encode("utf-8")
-        sock.sendto(msg, self.client_address)
+        
+        msgHandler(msgs, clientPK,
+                   keychain[self.client_address[0]]["encrypt"], 
+                   sock, self.client_address)
+
+
+        
 
 
 
