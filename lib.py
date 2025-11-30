@@ -7,13 +7,14 @@ import os
 #in this house we use reverse camel case
 udpPort = 6969
 keySize = 4096
-maxSectorSize = int((446)-32)
-initMsg = "meowtp hand? ?"
+maxSectorSize = int((446)-32) #cool ass magic numbers ik
+#TODO: probably actually use these??
+initMsg = "meowtp reqKey ?"
 greetMsg = "meowtp pk"# + pubkey
 
-#yeah this is gonna get used more soon
-def createKeyPair():
-    privKey = rsa.generate_private_key( #everytime program is started, a new key is used :3
+#TODO: stop being a twat and use classes
+def createKeyPair(): #you are never gonna believe what this does
+    privKey = rsa.generate_private_key( 
         public_exponent = 65537,
         key_size=keySize
     )
@@ -46,27 +47,13 @@ def privKeyDecrypt(msg, key):
     msg = msg.decode("utf-8")
     return msg
 
-def recvPubkey(param):
-    clientPK = serialization.load_pem_public_key(''.join(x+' ' for x in param).encode("utf-8")) #holy one liner
-    return clientPK
+
+recvPubkey = lambda param: serialization.load_pem_public_key(''.join(x+' ' for x in param).encode("utf-8"))
 
 
 getParams = lambda msg: msg.split(" ")[2:]
 
 getReq = lambda msg: msg.split(" ")[1]
-
-def readSector(fileName, sector):
-    size = math.ceil(os.path.getsize("./serving/"+fileName)/maxSectorSize)
-    try:
-        sector = int(sector)
-    except:
-        
-        return size
-    file = open("./serving/"+fileName,"rb")
-    file.seek(0,int(maxSectorSize*sector))
-    contents = file.read(maxSectorSize)
-    file.close()
-    return contents
 
 
 def msgHandler(msgs, publicKey, encrypt, sock, client_address):
@@ -75,7 +62,7 @@ def msgHandler(msgs, publicKey, encrypt, sock, client_address):
             print("E:"+msg)
             msgs[i] = pubKeyEncrypt(msg.encode("utf-8"),publicKey)
     
-    else:
+    else: #TODO: could be further optimized
         for i,msg in enumerate(msgs):
             print("NE:"+msg)
             msgs[i] = msg.encode("utf-8")
@@ -84,3 +71,40 @@ def msgHandler(msgs, publicKey, encrypt, sock, client_address):
     for msg in msgs:
         sock.sendto(msg, client_address)
     return
+
+def fileSize(fileName):
+    size = math.ceil(os.path.getsize("./serving/"+fileName)/maxSectorSize)
+    return size
+
+
+def readSector(fileName, sector):
+    size = fileSize(fileName)
+    file = open("./serving/"+fileName,"rb")
+    file.seek(0,int(maxSectorSize*sector))
+    contents = file.read(maxSectorSize)
+    file.close()
+    return contents
+
+
+#sectors is a dictionary
+# {sectNo:"sectContents"}
+#TODO: allow for missing sectors
+
+def disassembleFile(fileName):
+    sectors = {}
+    fileSectorSize = fileSize(fileName)
+    file = open("serving/"+fileName, "rb")
+    for i in range(0,fileSectorSize):
+        sectors[i] = file.read(maxSectorSize)
+    return sectors
+
+
+
+def assembleFile(sectors, fileName):
+    fileSectorSize = fileSize(fileName)
+    fileContents = b""
+    for i in range(0,fileSectorSize):
+        fileContents += sectors[i]
+    file = open("downloaded/"+fileName, "xwb")
+    file.write(fileContents)
+    file.close()
