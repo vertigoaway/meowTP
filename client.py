@@ -9,6 +9,7 @@ privKey, pubKey, pem = lib.createKeyPair()
 quit = False
 encrypt = False
 skimp = False
+srvPubKey = None
 while not quit:
 
     received = sock.recv(4096)
@@ -21,15 +22,15 @@ while not quit:
         pass
     req = lib.getReq(received)
     param = lib.getParams(received)
-    
+    msgs = []
     match req:
         case "hand":# keyexch pt 1
             skimp = True
             srvPubKey = lib.recvPubkey(param)
-            msg = bytes("meowtp shake? "+pem.decode("utf-8"),"utf-8")
+            msgs.append("meowtp shake? "+pem.decode("utf-8"))
         case "shake":#keyexch pt 2
             print("key exchange completed")
-            msg = "meowtp meow ?"
+            msgs.append("meowtp meow ?")
         case "await": #sent when server is waiting for new request
             print(param)
         case "down":
@@ -38,11 +39,11 @@ while not quit:
         case _:
             print("request param invalid D:")
     
-    if encrypt:
-        msg = lib.pubKeyEncrypt(bytes(msg,"utf-8"),srvPubKey)
+
+
+
+    lib.msgHandler(msgs,srvPubKey, encrypt, sock, ("127.0.0.1",lib.udpPort))
 
     if skimp: #sshhhhh me when im lazy
         encrypt = True
         skimp = False
-    sock.sendto(msg,("127.0.0.1",lib.udpPort))
-

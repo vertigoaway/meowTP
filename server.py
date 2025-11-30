@@ -2,19 +2,7 @@ import lib, socketserver, cryptography # pyright: ignore[reportMissingImports]
 
 
 
-def msgHandler(msgs, clientPK, encrypt, sock, client_address):
-    if encrypt:
-        for i,msg in enumerate(msgs):
-            msgs[i] = lib.pubKeyEncrypt(msg.encode("utf-8"),clientPK)
-    
-    else:
-        for i,msg in enumerate(msgs):
-            msgs[i] = msg.encode("utf-8")
-    
-    
-    for msg in msgs:
-        sock.sendto(msg, client_address)
-    return
+
 
 
 class UDPHandler(socketserver.BaseRequestHandler):
@@ -63,7 +51,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
                 msgs.append("meowtp await ?")
 
         
-        msgHandler(msgs, clientPK,
+        lib.msgHandler(msgs, clientPK,
                    keychain[self.client_address[0]]["encrypt"], 
                    sock, self.client_address)
 

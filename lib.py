@@ -67,3 +67,20 @@ def readSector(fileName, sector):
     contents = file.read(maxSectorSize)
     file.close()
     return contents
+
+
+def msgHandler(msgs, publicKey, encrypt, sock, client_address):
+    if encrypt:
+        for i,msg in enumerate(msgs):
+            print("E:"+msg)
+            msgs[i] = pubKeyEncrypt(msg.encode("utf-8"),publicKey)
+    
+    else:
+        for i,msg in enumerate(msgs):
+            print("NE:"+msg)
+            msgs[i] = msg.encode("utf-8")
+    
+    
+    for msg in msgs:
+        sock.sendto(msg, client_address)
+    return
