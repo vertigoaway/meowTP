@@ -1,4 +1,4 @@
-import socket
+import socket, math
 from cryptography.hazmat.primitives.asymmetric import rsa # pyright: ignore[reportMissingImports]
 from cryptography.hazmat.primitives import serialization # pyright: ignore[reportMissingImports] QUIET!!!
 from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]
@@ -46,16 +46,19 @@ def privKeyDecrypt(msg, key):
     msg = msg.decode("utf-8")
     return msg
 
+getParams = lambda msg: msg.split(" ")[2:]
+
+getReq = lambda msg: msg.split(" ")[1]
 
 def readSector(fileName, sector):
-    
+    size = math.ceil(os.path.getsize("./serving/"+fileName)/maxSectorSize)
     try:
         sector = int(sector)
     except:
-        size = os.path.getsize("./serving/"+fileName)
+        
         return size
     file = open("./serving/"+fileName,"rb")
-    print(maxSectorSize,sector,maxSectorSize*sector)
     file.seek(0,int(maxSectorSize*sector))
     contents = file.read(maxSectorSize)
+    file.close()
     return contents
