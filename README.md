@@ -20,14 +20,15 @@ objectives
   - 🟨 server can handle multiple clients
   - ✅ client and server can send packets in bulk
   - 🔨⚠️ client and server can recieve packets in bulk
-  - 🔨⚠️ client can download files from server
+  - 🟨🔨 client can download files from server
   - 🔨⚠️ client can upload files to server
-  - 🔨 client has rudimentary cli interface
+  - 🟨 client has rudimentary cli interface
   - 🔨 actually use OOP
   - 🔨 perhaps make decent code
   - ❌ refactor server to use async
   - ❌ refactor client to use async
   - ❌ use bytes instead of strings
-  - ❌ detect and correct missing packets
+  - ❌ detect and correct packet loss
+  - ❌ add user authentication
   - ❌ annotate code
   - ❌ document functions

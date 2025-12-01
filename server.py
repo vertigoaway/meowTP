@@ -20,7 +20,6 @@ class UDPHandler(socketserver.BaseRequestHandler):
         except:
             keychain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
             clientPK = None
-        encrypt = keychain[self.client_address[0]]["encrypt"]
         try:
             data = data.decode("utf-8").strip()
         except:
@@ -30,19 +29,22 @@ class UDPHandler(socketserver.BaseRequestHandler):
         
         param = lib.getParams(data)
         req = lib.getReq(data)
-        print(req)
         msgs = []
         match req:
+            ### key exchange ###
             case "reqKey":
-                msgs.append("meowtp reqKey "+pem.decode("utf-8"))
-            case "pKey":
+                print(param)
                 keychain[self.client_address[0]] = {
                         "clientPK":lib.recvPubkey(param),
-                        "encrypt":True}
-                encrypt = True
+                        "encrypt":False}
+                
                 clientPK = keychain[self.client_address[0]]["clientPK"]
-                msgs.append("meowtp finKey "+self.client_address[0])
-            
+                msgs.append("meowtp reqKey "+pem.decode("utf-8"))
+            case "finKey":
+                keychain[self.client_address[0]]["encrypt"] = True
+                clientPK = keychain[self.client_address[0]]["clientPK"]
+                msgs.append("meowtp ready ?")
+            ######
             case "sizeOf":
                 size = lib.fileSize(param[-1])
                 msgs.append("meowtp size "+str(size))
@@ -52,15 +54,20 @@ class UDPHandler(socketserver.BaseRequestHandler):
 
                 pass
 
-            case "down": #down sector fi
-                print("man idk")
+            case "down": #down fi
+                file = param[0].replace("/","")
+                sectorDict = lib.disassembleFile(file)
+                msgs.append("meowtp size "+lib.fileSize(file))
+                for i in sectorDict.keys():
+                    msgs.append("meowtp part "+str(i)+" "+str(sectorDict[i],"utf-8"))
+                
 
-            
+
             case _:
                 msgs.append("meowtp ready ?")
 
         
-        lib.msgHandler(msgs, clientPK,
+        lib.sendMessages(msgs, clientPK,
                    keychain[self.client_address[0]]["encrypt"], 
                    sock, self.client_address)
 
