@@ -9,8 +9,6 @@ udpPort = 6969
 keySize = 4096
 maxSectorSize = int((446)-32) #cool ass magic numbers ik
 #TODO: probably actually use these??
-initMsg = "meowtp reqKey ?"
-greetMsg = "meowtp pk"# + pubkey
 
 #TODO: stop being a twat and use classes
 def createKeyPair(): #you are never gonna believe what this does
@@ -48,6 +46,17 @@ def privKeyDecrypt(msg, key):
     return msg
 
 
+def bulkEncrypt(msgs, key):
+    for i, msg in enumerate(msgs):
+        msgs[i] = pubKeyEncrypt(msg,key)
+    return msgs
+
+def bulkDecrypt(msgs, key):
+    for i, msg in enumerate(msgs):
+        msgs[i] = privKeyDecrypt(msg,key)
+    return msgs
+
+
 recvPubkey = lambda param: serialization.load_pem_public_key(''.join(x+' ' for x in param).encode("utf-8"))
 
 
@@ -56,7 +65,7 @@ getParams = lambda msg: msg.split(" ")[2:]
 getReq = lambda msg: msg.split(" ")[1]
 
 
-def msgHandler(msgs, publicKey, encrypt, sock, client_address):
+def sendMessages(msgs, publicKey, encrypt, sock, client_address):
     if encrypt:
         for i,msg in enumerate(msgs):
             print("E:"+msg)
