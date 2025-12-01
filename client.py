@@ -2,6 +2,15 @@ import socket, sys, cryptography, lib, random # pyright: ignore[reportMissingImp
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+#init
+privKey, pubKey, pem = lib.createKeyPair()
+quit = False
+encrypt = False
+skimp = False
+srvPubKey = None
+file = {"expectingFile":False}
+
+
 
 def interface(msgs):
     print("enter a request!")
@@ -18,21 +27,16 @@ def interface(msgs):
         case "down":
             cmd = cmd.replace("/","")
             msgs.append(cmd)
+            file = {"expectingFile":True,"name":param[0],"sectors":{}}
+
+    return msgs,file
 
 
-    return msgs
 
 
 
-
-privKey, pubKey, pem = lib.createKeyPair()
-quit = False
-encrypt = False
-skimp = False
-srvPubKey = None
-
-
-sock.sendto(bytes("meowtp reqKey ", "utf-8")+pem, ("127.0.0.1", lib.udpPort))
+#begin connection
+sock.sendto(bytes("meowtp reqKey ", "utf-8")+pem, ("192.168.2.66", lib.udpPort))
 print("requesting server public key")
 
 while not quit:
@@ -58,20 +62,26 @@ while not quit:
             print("key exchange completed")
             msgs.append("meowtp ready ?")
         case "ready": #idle
-            msgs = interface(msgs)
+            msgs,file = interface(msgs)
 
-        case "size": #size of a file previously requested is sent to us
-            size = int(param[-1])
 
         case "part": #download a "sector" of file
-            param
+            if file["expectingFile"]:
+                sectNo = param[0]
+                contents = ''.join(x for x in param[1:])
+                file["sectors"][sectNo] = bytes(contents,"utf-8")
+        case "fin":
+            if file["expectingFile"]:
+                lib.assembleFile(file["sectors"],file["name"])
+            file = {"expectingFile":False}
+
         case _:
             print("invalid request recieved D:")
     
 
 
-
-    lib.sendMessages(msgs,srvPubKey, encrypt, sock, ("127.0.0.1",lib.udpPort))
+    if len(msgs) != 0:
+        lib.sendMessages(msgs,srvPubKey, encrypt, sock, ("192.168.2.66",lib.udpPort))
 
     if skimp: #lazy? yeah lol
         encrypt = True

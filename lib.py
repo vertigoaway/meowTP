@@ -68,12 +68,10 @@ getReq = lambda msg: msg.split(" ")[1]
 def sendMessages(msgs, publicKey, encrypt, sock, client_address):
     if encrypt:
         for i,msg in enumerate(msgs):
-            print("E:"+msg)
             msgs[i] = pubKeyEncrypt(msg.encode("utf-8"),publicKey)
     
     else: #TODO: could be further optimized
         for i,msg in enumerate(msgs):
-            print("NE:"+msg)
             msgs[i] = msg.encode("utf-8")
     
     
@@ -110,10 +108,9 @@ def disassembleFile(fileName):
 
 
 def assembleFile(sectors, fileName):
-    fileSectorSize = fileSize(fileName)
     fileContents = b""
-    for i in range(0,fileSectorSize):
+    for i in sectors.keys():
         fileContents += sectors[i]
-    file = open("downloaded/"+fileName, "xwb")
+    file = open("downloaded/"+fileName, "wb")
     file.write(fileContents)
     file.close()

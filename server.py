@@ -57,9 +57,11 @@ class UDPHandler(socketserver.BaseRequestHandler):
             case "down": #down fi
                 file = param[0].replace("/","")
                 sectorDict = lib.disassembleFile(file)
-                msgs.append("meowtp size "+lib.fileSize(file))
                 for i in sectorDict.keys():
                     msgs.append("meowtp part "+str(i)+" "+str(sectorDict[i],"utf-8"))
+                msgs.append("meowtp fin ") #TODO: send a hash?
+                print("served "+file+" to"+self.client_address[0])
+                msgs.append("meowtp ready ")
                 
 
 
@@ -77,7 +79,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    with socketserver.UDPServer(("127.0.0.1", lib.udpPort), UDPHandler) as server:
+    with socketserver.UDPServer(("192.168.2.66", lib.udpPort), UDPHandler) as server:
         print("server up!")
 
         privKey, pubKey, pem = lib.createKeyPair()
