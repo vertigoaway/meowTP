@@ -1,4 +1,4 @@
-import socket, math
+import socket, math, asyncio
 from cryptography.hazmat.primitives.asymmetric import rsa # pyright: ignore[reportMissingImports]
 from cryptography.hazmat.primitives import serialization # pyright: ignore[reportMissingImports] QUIET!!!
 from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]

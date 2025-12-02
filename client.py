@@ -1,4 +1,4 @@
-import socket, sys, cryptography, lib, random # pyright: ignore[reportMissingImports]
+import socket, sys, cryptography, lib, random, asyncio # pyright: ignore[reportMissingImports]
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
