@@ -16,10 +16,22 @@ handshake steps:
 objectives
   - ✅ RSA diffie helman key exchange
   - ✅ all messages are encrypted after handshake
-  - ✅ very few security flaws in encryption implementation 
+  - 🟨 very few security flaws in encryption implementation 
+    - ✅ packet RSA encryption
+    - ❌ quantum proof algorithms
+    - ❌ AES-GCM file encryption
+    - ❌ ED25519
+    - ❌ persistent keys (?)
+    - ❌ add user authentication
+    - ❌ MiTM proof
+      - ❌ Nonces
+    - ❌ mitigate spoofing
+    - 🔨 proper exception handling
   - 🟨 server can handle multiple clients
-  - ✅ client and server can send packets in bulk
-  - 🟨🔨 client and server can recieve packets in bulk
+  - ✅ server can send packets in bulk
+  - ❌ server can recieve packets in bulk
+  - ✅ client can send packets in bulk
+  - ✅ client can recieve packets in bulk
   - ✅ client can download files from server
     - ? download <= 0.5MB with little/no corruption
     - ? download <= 1MB with little/no corruption
@@ -28,20 +40,17 @@ objectives
   - 🔨 client can upload files to server
   - 🟨🔨 client has rudimentary cli interface
   - 🔨 actually use OOP
-  - 🔨 perhaps make decent code
-  - ❌ remove as much packet bloat as possilbe
-  - ❌ refactor server to use async
-  - ❌ refactor client to use async
-  - ❌ use bytes instead of strings
+  - 🟨🔨 perhaps make decent code
+  - 🔨 stop fucking using magic numbers
+  - ❌ no more byte<->string fuckery :(
+  - ❌ remove as much packet bloat as possible
+  - ❌ refactor server to use async (?)
+  - ❌ refactor client to use async (?)
   - ❌ detect and correct packet loss
   - ❌ compress files
   - ❌ negotiate packet size
-  - ❌ add ED25519
-  - ❌ add quantum proof algorithms
-  - ❌ add user authentication
-  - ❌ persistent keys (?)
   - ❌ annotate code
-  - ❌ prettyify code :3
+  - 🔨 prettyify code :3
   - ❌ document functions
   - ❌ split lib into more files
   - ❌ add classes to lib
