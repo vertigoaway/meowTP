@@ -1,76 +1,46 @@
 import socket, math, asyncio
-from cryptography.hazmat.primitives.asymmetric import rsa # pyright: ignore[reportMissingImports]
-from cryptography.hazmat.primitives import serialization # pyright: ignore[reportMissingImports] QUIET!!!
-from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]
-from cryptography.hazmat.primitives import hashes# pyright: ignore[reportMissingImports]
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import crypto
 import os
 
 #in this house we use reverse camel case
 udpPort = 6969
-keySize = 4096
 maxSectorSize = int((446)-32) #cool ass magic numbers ik
 #TODO: probably actually use these??
 
 #TODO: stop being a twat and use classes
-def createKeyPair(): #you are never gonna believe what this does
-    privKey = rsa.generate_private_key( 
-        public_exponent = 65537,
-        key_size=keySize
-    )
-    pubKey = privKey.public_key()
 
-    pem = pubKey.public_bytes(
-        encoding=serialization.Encoding.PEM,
-    format=serialization.PublicFormat.SubjectPublicKeyInfo)
-    return privKey, pubKey, pem
-
-def pubKeyEncrypt(msg, key):
-    msg = key.encrypt(msg,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-            )
-        )
-    return msg
-
-def privKeyDecrypt(msg, key):
-    msg = key.decrypt(
-            msg,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
-    return msg
-
-
-def bulkEncrypt(msgs, key):
-    for i, msg in enumerate(msgs):
-        msgs[i] = pubKeyEncrypt(msg,key)
-    return msgs
-
-def bulkDecrypt(msgs, key):
-    for i, msg in enumerate(msgs):
-        msgs[i] = privKeyDecrypt(msg,key)
-    return msgs
-
-
-recvPubkey = lambda param: serialization.load_pem_public_key(''.join(x+'' for x in param).encode("utf-8"))
 
 getId = lambda msg: msg[0:5]
 
 getParams = lambda msg: msg[14:]
 
 getReq = lambda msg: msg[7:13]
-
+def parseRawPkts(rawPkts, encrypted=False, privKey=None):
+    pkts = [[]*len(rawPkts)]
+    i=0
+    if encrypted:
+        for rawPkt in rawPkts:
+            rawPkt = crypto.privKeyDecrypt(privKey)
+            id = i #packet id not implemented yet
+            req = getReq(rawPkt)
+            params = getParams(rawPkt)
+            pkts[id] = [req,params]
+            i+=1
+    else: #no encryption!
+        for rawPkt in rawPkts: 
+            id = i #packet id not implemented yet
+            req = getReq(rawPkt).decode('utf-8')
+            params = getParams(rawPkt).decode('utf-8')
+            pkts[id] = [req,params]
+            i+=1
+    return pkts
+    
+    
 
 def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
     if encrypt:
         for i,msg in enumerate(msgs):
-            msgs[i] = pubKeyEncrypt(msg,publicKey)
+            msgs[i] = crypto.pubKeyEncrypt(msg,publicKey)
     
     else: #TODO: could be further optimized
         for i,msg in enumerate(msgs):
