@@ -78,7 +78,7 @@ def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
     
     
     for msg in msgs:
-        sock.sendto(msg, client_address)
+        sock.transport.sendto(msg, client_address)
     return
 
 def fileSectSize(fileName):

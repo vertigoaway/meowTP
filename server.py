@@ -5,21 +5,26 @@ import lib, socketserver, os, asyncio # pyright: ignore[reportMissingImports]
 
 
 
-class UDPHandler(socketserver.BaseRequestHandler):
-    
-    def handle(self):
-        data = self.request[0]
-        sock = self.request[1]
-        print(f"C: {self.client_address[0]}")
+class MyDatagramProtocol(asyncio.DatagramProtocol):
+
+
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        print(f"Received {data} from {addr}")
+        self.transport.sendto(data, addr)  # Echo back the received data
+
+        print(f"C: {addr[0]}")
 
 
         try: 
-            if keyChain[self.client_address[0]]["encrypt"]:
+            if keyChain[addr[0]]["encrypt"]:
                 data = lib.privKeyDecrypt(data,privKey)
             else:
                 data = data.decode("utf-8").strip()
         except KeyError:
-            keyChain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
+            keyChain[addr[0]] = {"encrypt":False} #new ip! disable encryption
             print(data)
             data = data.decode("utf-8").strip()
     
@@ -34,13 +39,13 @@ class UDPHandler(socketserver.BaseRequestHandler):
             match req:
                 ### key exchange ###
                 case "reqKey":
-                    keyChain[self.client_address[0]] = {
+                    keyChain[addr[0]] = {
                             "clientPK":lib.recvPubkey(param),
                             "encrypt":False}
                     
                     msgs.append(b"meowtp reqKey "+pem)
                 case "finKey":
-                    keyChain[self.client_address[0]]["encrypt"] = True
+                    keyChain[addr[0]]["encrypt"] = True
                     msgs.append(b"meowtp ready! ")
                 ######
                 case b"sizeOf":
@@ -59,31 +64,38 @@ class UDPHandler(socketserver.BaseRequestHandler):
                     for i in sectorDict.keys():
                         msgs.append(b"meowtp partFi "+i.to_bytes(6, "big")+b" "+sectorDict[i])
                     msgs.append(b"meowtp finish ") #TODO: send a hash?
-                    print("served "+file+" to "+self.client_address[0])
+                    print("served "+file+" to "+addr[0])
                     msgs.append(b"meowtp ready! ")
                 case b"stpNow":
-                    print("client "+self.client_address[0]+" disconnected")
-                    keyChain[self.client_address[0]]["encrypt"] = False
-                    keyChain[self.client_address[0]]["clientPK"] = None
+                    print("client "+addr[0]+" disconnected")
+                    keyChain[addr[0]]["encrypt"] = False
+                    keyChain[addr[0]]["clientPK"] = None
 
                 case _:
                     msgs.append(b"meowtp ready! ")
         except FileNotFoundError:
             msgs.append(b"meowtp err400 ")
         
-        lib.sendMessages(sock, self.client_address, msgs,
-                   encrypt=keyChain[self.client_address[0]]["encrypt"],
-                   publicKey=keyChain[self.client_address[0]]["clientPK"] )
+        lib.sendMessages(self, addr, msgs,
+                   encrypt=keyChain[addr[0]]["encrypt"],
+                   publicKey=keyChain[addr[0]]["clientPK"] )
 
 
         
 
-
+async def main():
+    loop = asyncio.get_running_loop()
+    print("Starting UDP server...")
+    # Create a UDP server
+    listen = loop.create_datagram_endpoint(lambda: MyDatagramProtocol(), local_addr=('127.0.0.1', lib.udpPort))
+    transport, protocol = await listen
+    try:
+        await asyncio.sleep(3600)  # Run for 1 hour
+    finally:
+        transport.close()
 
 if __name__ == "__main__":
-    with socketserver.ThreadingUDPServer(("127.0.0.1", lib.udpPort), UDPHandler) as server:
-        print("server up!")
-
-        privKey, pubKey, pem = lib.createKeyPair()
-        keyChain = {}
-        server.serve_forever()
+    print("server up!")
+    privKey, pubKey, pem = lib.createKeyPair()
+    keyChain = {}
+    asyncio.run(main())
