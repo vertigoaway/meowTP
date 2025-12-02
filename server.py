@@ -1,4 +1,4 @@
-import lib, socketserver, os # pyright: ignore[reportMissingImports]
+import lib, socketserver, os,crypto # pyright: ignore[reportMissingImports]
 
 
 
@@ -15,7 +15,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
 
         try: 
             if keyChain[self.client_address[0]]["encrypt"]:
-                data = lib.privKeyDecrypt(data,privKey)
+                data = crypto.privKeyDecrypt(data,privKey)
             else:
                 data = data.decode("utf-8").strip()
         except KeyError:
@@ -35,7 +35,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
                 ### key exchange ###
                 case "reqKey":
                     keyChain[self.client_address[0]] = {
-                            "clientPK":lib.recvPubkey(param),
+                            "clientPK":crypto.recvPubkey(param),
                             "encrypt":False}
                     
                     msgs.append(b"meowtp reqKey "+pem)
@@ -84,6 +84,6 @@ if __name__ == "__main__":
     with socketserver.ThreadingUDPServer(("127.0.0.1", lib.udpPort), UDPHandler) as server:
         print("server up!")
 
-        privKey, pubKey, pem = lib.createKeyPair()
+        privKey, pubKey, pem = crypto.createKeyPair()
         keyChain = {}
         server.serve_forever()

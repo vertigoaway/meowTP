@@ -1,10 +1,10 @@
-import socket, sys, cryptography, lib, random # pyright: ignore[reportMissingImports]
+import socket, sys, cryptography, lib, random, crypto # pyright: ignore[reportMissingImports]
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 #init
 srv = ("127.0.0.1",lib.udpPort)
-privKey, pubKey, pem = lib.createKeyPair()
+privKey, pubKey, pem = crypto.createKeyPair()
 quit = False
 encrypt = False
 skimp = False
@@ -58,7 +58,7 @@ while not quit:
     received = sock.recv(4096)
 
     if encrypt:
-        received = lib.privKeyDecrypt(received, privKey)
+        received = crypto.privKeyDecrypt(received, privKey)
     else:
         received = str(received, "utf-8")
     
@@ -69,7 +69,7 @@ while not quit:
         ### key exchange ###
         case "reqKey":# we recieve server key and get requested for client key
             skimp = True
-            srvPubKey = lib.recvPubkey(param)
+            srvPubKey = crypto.recvPubkey(param)
             msgs.append(b"meowtp finKey ")
         case "finKey":#ensure both can read messages
             print("key exchange completed")
