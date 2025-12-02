@@ -1,4 +1,4 @@
-import socket, sys, cryptography, lib, random, asyncio # pyright: ignore[reportMissingImports]
+import socket, sys, cryptography, lib, crypto, asyncio # pyright: ignore[reportMissingImports]
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -69,7 +69,7 @@ while not quit:
         ### key exchange ###
         case "reqKey":# we recieve server key and get requested for client key
             skimp = True
-            srvPubKey = lib.recvPubkey(param)
+            srvPubKey = crypto.recvPubkey(param)
             msgs.append(b"meowtp finKey ")
         case "finKey":#ensure both can read messages
             print("key exchange completed")

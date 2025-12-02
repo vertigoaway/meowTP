@@ -1,5 +1,5 @@
 import lib, socketserver, os, asyncio # pyright: ignore[reportMissingImports]
-
+import crypto
 
 
 
@@ -40,7 +40,7 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
                 ### key exchange ###
                 case "reqKey":
                     keyChain[addr[0]] = {
-                            "clientPK":lib.recvPubkey(param),
+                            "clientPK":crypto.recvPubkey(param),
                             "encrypt":False}
                     
                     msgs.append(b"meowtp reqKey "+pem)
@@ -96,6 +96,6 @@ async def main():
 
 if __name__ == "__main__":
     print("server up!")
-    privKey, pubKey, pem = lib.createKeyPair()
+    privKey, pubKey, pem = crypto.createKeyPair()
     keyChain = {}
     asyncio.run(main())
