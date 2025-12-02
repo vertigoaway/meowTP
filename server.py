@@ -1,4 +1,4 @@
-import lib, socketserver, cryptography, os # pyright: ignore[reportMissingImports]
+import lib, socketserver, os # pyright: ignore[reportMissingImports]
 
 
 
@@ -43,11 +43,11 @@ class UDPHandler(socketserver.BaseRequestHandler):
                     keyChain[self.client_address[0]]["encrypt"] = True
                     msgs.append(b"meowtp ready! ")
                 ######
-                case "sizeOf":
+                case b"sizeOf":
                     size = lib.fileSectSize(param[-1])
-                    msgs.append(b"meowtp sizeOf "+str(size))
+                    msgs.append(b"meowtp sizeOf "+size.to_bytes(6,"big"))
 
-                case "upldFi": #fi contents
+                case b"upldFi": #fi contents
 
 
                     pass
@@ -61,6 +61,10 @@ class UDPHandler(socketserver.BaseRequestHandler):
                     msgs.append(b"meowtp finish ") #TODO: send a hash?
                     print("served "+file+" to "+self.client_address[0])
                     msgs.append(b"meowtp ready! ")
+                case b"stpNow":
+                    print("client "+self.client_address[0]+" disconnected")
+                    keyChain[self.client_address[0]]["encrypt"] = False
+                    keyChain[self.client_address[0]]["clientPK"] = None
 
                 case _:
                     msgs.append(b"meowtp ready! ")
@@ -77,7 +81,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    with socketserver.UDPServer(("127.0.0.1", lib.udpPort), UDPHandler) as server:
+    with socketserver.ThreadingUDPServer(("127.0.0.1", lib.udpPort), UDPHandler) as server:
         print("server up!")
 
         privKey, pubKey, pem = lib.createKeyPair()

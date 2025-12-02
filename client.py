@@ -19,6 +19,8 @@ def interface(msgs):
     print('\t downFi <filename>')
     print("Upload:")
     print('\t upldFi <filename>')
+    print("Quit:")
+    print("\t quit")
     cmd = "meowtp "+input("meowtp:")
     req = lib.getReq(cmd)
     param = lib.getParams(cmd)
@@ -27,9 +29,20 @@ def interface(msgs):
             cmd = cmd.replace("/","")
             msgs.append(cmd.encode())
             file = {"expectingFile":True,"name":cmd[14:],"sectors":{}}
+        case "upldFi":
+            cmd = cmd.replace("/","")
+            msgs.append(cmd.encode())
+            file = {"sendingFile":True,"name":cmd[14:],"sectors":lib.disassembleFile(cmd[14:])} 
+            #TODO: finish upload implementation
+        case "quit":
+            global quit
+            quit = True
+            msgs.append(b"meowtp stpNow")
+            file = {"expectingFile":False}
         case _:
             print("err")
-            raise NotImplemented
+            raise Exception("invalid command")
+        
     return msgs,file
 
 
@@ -48,6 +61,7 @@ while not quit:
         received = lib.privKeyDecrypt(received, privKey)
     else:
         received = str(received, "utf-8")
+    
     req = lib.getReq(received)
     param = lib.getParams(received)
     msgs = []
@@ -59,7 +73,6 @@ while not quit:
             msgs.append(b"meowtp finKey ")
         case "finKey":#ensure both can read messages
             print("key exchange completed")
-            encrypt = True
             msgs.append(b"meowtp ready! ?")
         case b"ready!": #idle
             msgs,file = interface(msgs)
@@ -69,6 +82,7 @@ while not quit:
             if file["expectingFile"]:
                 sectNo = int.from_bytes(param[0:6],"big")
                 contents = param[7:]
+                print(sectNo)
                 file["sectors"][sectNo] = contents
         case b"finish":
             if file["expectingFile"]:
@@ -89,8 +103,10 @@ while not quit:
     if len(msgs) != 0:
         lib.sendMessages(sock,srv, msgs, encrypt=encrypt, publicKey=srvPubKey)
     else:
-        lib.sendMessages(sock,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey)
-
+        if file["expectingFile"] == False:
+            lib.sendMessages(sock,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey)
+        else:
+            pass
     if skimp: #lazy? yeah lol
         encrypt = True
         skimp = False

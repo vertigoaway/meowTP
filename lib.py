@@ -3,7 +3,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa # pyright: ignore[repo
 from cryptography.hazmat.primitives import serialization # pyright: ignore[reportMissingImports] QUIET!!!
 from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]
 from cryptography.hazmat.primitives import hashes# pyright: ignore[reportMissingImports]
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import os
+
 #in this house we use reverse camel case
 udpPort = 6969
 keySize = 4096
@@ -109,8 +111,9 @@ def disassembleFile(fileName):
 
 def assembleFile(sectors, fileName):
     fileContents = b""
-    for i in sectors.keys():
-        fileContents += sectors[i]
     file = open("downloaded/"+fileName, "wb")
+    for i in sectors.keys():
+        file.write(sectors[i])
     file.write(fileContents)
     file.close()
+    return
