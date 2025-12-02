@@ -65,7 +65,7 @@ getParams = lambda msg: msg.split(" ")[2:]
 getReq = lambda msg: msg.split(" ")[1]
 
 
-def sendMessages(msgs, publicKey, encrypt, sock, client_address):
+def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
     if encrypt:
         for i,msg in enumerate(msgs):
             msgs[i] = pubKeyEncrypt(msg.encode("utf-8"),publicKey)
@@ -79,13 +79,13 @@ def sendMessages(msgs, publicKey, encrypt, sock, client_address):
         sock.sendto(msg, client_address)
     return
 
-def fileSize(fileName):
+def fileSectSize(fileName):
     size = math.ceil(os.path.getsize("./serving/"+fileName)/maxSectorSize)
     return size
 
 
 def readSector(fileName, sector):
-    size = fileSize(fileName)
+    size = fileSectSize(fileName)
     file = open("./serving/"+fileName,"rb")
     file.seek(0,int(maxSectorSize*sector))
     contents = file.read(maxSectorSize)
@@ -95,11 +95,11 @@ def readSector(fileName, sector):
 
 #sectors is a dictionary
 # {sectNo:"sectContents"}
-#TODO: allow for missing sectors
+#TODO: allow & correct missing sectors
 
 def disassembleFile(fileName):
     sectors = {}
-    fileSectorSize = fileSize(fileName)
+    fileSectorSize = fileSectSize(fileName)
     file = open("serving/"+fileName, "rb")
     for i in range(0,fileSectorSize):
         sectors[i] = file.read(maxSectorSize)

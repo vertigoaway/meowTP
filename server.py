@@ -1,4 +1,4 @@
-import lib, socketserver, cryptography # pyright: ignore[reportMissingImports]
+import lib, socketserver, cryptography, os # pyright: ignore[reportMissingImports]
 
 
 
@@ -10,68 +10,64 @@ class UDPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0]
         sock = self.request[1]
-        print(f"{self.client_address[0]} connected!")
+        print(f"C: {self.client_address[0]}")
 
 
         try: 
-            if keychain[self.client_address[0]]["encrypt"]:
-                clientPK = keychain[self.client_address[0]]["clientPK"]#key was exchanged, all messages Should be encrypted
+            if keyChain[self.client_address[0]]["encrypt"]:
                 data = lib.privKeyDecrypt(data,privKey)
+            else:
+                data = data.decode("utf-8").strip()
         except:
-            keychain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
-            clientPK = None
-        try:
+            keyChain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
             data = data.decode("utf-8").strip()
-        except:
-            pass
-
-
+    
+        
         
         param = lib.getParams(data)
         req = lib.getReq(data)
+        data = None
         msgs = []
-        match req:
-            ### key exchange ###
-            case "reqKey":
-                print(param)
-                keychain[self.client_address[0]] = {
-                        "clientPK":lib.recvPubkey(param),
-                        "encrypt":False}
+        try:
+            match req:
+                ### key exchange ###
+                case "reqKey":
+                    keyChain[self.client_address[0]] = {
+                            "clientPK":lib.recvPubkey(param),
+                            "encrypt":False}
+                    
+                    msgs.append("meowtp reqKey "+pem.decode("utf-8"))
+                case "finKey":
+                    keyChain[self.client_address[0]]["encrypt"] = True
+                    msgs.append("meowtp ready ")
+                ######
+                case "sizeOf":
+                    size = lib.fileSectSize(param[-1])
+                    msgs.append("meowtp size "+str(size))
+
+                case "up": #fi contents
+
+
+                    pass
                 
-                clientPK = keychain[self.client_address[0]]["clientPK"]
-                msgs.append("meowtp reqKey "+pem.decode("utf-8"))
-            case "finKey":
-                keychain[self.client_address[0]]["encrypt"] = True
-                clientPK = keychain[self.client_address[0]]["clientPK"]
-                msgs.append("meowtp ready ?")
-            ######
-            case "sizeOf":
-                size = lib.fileSize(param[-1])
-                msgs.append("meowtp size "+str(size))
+                case "down": #fi
+                    file = param[0].replace("/","")
+                    sectorDict = lib.disassembleFile(file)
+                    
+                    for i in sectorDict.keys():
+                        msgs.append("meowtp part "+str(i)+" "+str(sectorDict[i],"utf-8"))
+                    msgs.append("meowtp fin ") #TODO: send a hash?
+                    print("served "+file+" to "+self.client_address[0])
+                    msgs.append("meowtp ready ")
 
-            case "up": #sector sector fi contents
-
-
-                pass
-
-            case "down": #down fi
-                file = param[0].replace("/","")
-                sectorDict = lib.disassembleFile(file)
-                for i in sectorDict.keys():
-                    msgs.append("meowtp part "+str(i)+" "+str(sectorDict[i],"utf-8"))
-                msgs.append("meowtp fin ") #TODO: send a hash?
-                print("served "+file+" to"+self.client_address[0])
-                msgs.append("meowtp ready ")
-                
-
-
-            case _:
-                msgs.append("meowtp ready ?")
-
+                case _:
+                    msgs.append("meowtp ready ")
+        except FileNotFoundError:
+            msgs.append("meowtp 400 ")
         
-        lib.sendMessages(msgs, clientPK,
-                   keychain[self.client_address[0]]["encrypt"], 
-                   sock, self.client_address)
+        lib.sendMessages(sock, self.client_address, msgs,
+                   encrypt=keyChain[self.client_address[0]]["encrypt"],
+                   publicKey=keyChain[self.client_address[0]]["clientPK"] )
 
 
         
@@ -83,5 +79,5 @@ if __name__ == "__main__":
         print("server up!")
 
         privKey, pubKey, pem = lib.createKeyPair()
-        keychain = {}
+        keyChain = {}
         server.serve_forever()
