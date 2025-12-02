@@ -3,7 +3,7 @@ import socket, sys, cryptography, lib, random # pyright: ignore[reportMissingImp
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 #init
-srv = ("192.168.2.66",lib.udpPort)
+srv = ("127.0.0.1",lib.udpPort)
 privKey, pubKey, pem = lib.createKeyPair()
 quit = False
 encrypt = False
@@ -16,17 +16,17 @@ file = {"expectingFile":False}
 def interface(msgs):
     print("enter a request!")
     print("Download:")
-    print('\t down <filename>')
+    print('\t downFi <filename>')
     print("Upload:")
-    print('\t up <filename>')
+    print('\t upldFi <filename>')
     cmd = "meowtp "+input("meowtp:")
     req = lib.getReq(cmd)
     param = lib.getParams(cmd)
     match req:
-        case "down":
+        case "downFi":
             cmd = cmd.replace("/","")
-            msgs.append(cmd)
-            file = {"expectingFile":True,"name":param[0],"sectors":{}}
+            msgs.append(cmd.encode())
+            file = {"expectingFile":True,"name":cmd[14:],"sectors":{}}
         case _:
             print("err")
             raise NotImplemented
@@ -46,10 +46,8 @@ while not quit:
 
     if encrypt:
         received = lib.privKeyDecrypt(received, privKey)
-    try:
+    else:
         received = str(received, "utf-8")
-    except:
-        pass
     req = lib.getReq(received)
     param = lib.getParams(received)
     msgs = []
@@ -58,25 +56,25 @@ while not quit:
         case "reqKey":# we recieve server key and get requested for client key
             skimp = True
             srvPubKey = lib.recvPubkey(param)
-            msgs.append("meowtp finKey ")
+            msgs.append(b"meowtp finKey ")
         case "finKey":#ensure both can read messages
             print("key exchange completed")
             encrypt = True
-            msgs.append("meowtp ready ?")
-        case "ready": #idle
+            msgs.append(b"meowtp ready! ?")
+        case b"ready!": #idle
             msgs,file = interface(msgs)
 
 
-        case "part": #download a "sector" of file
+        case b"partFi": #download a "sector" of file
             if file["expectingFile"]:
-                sectNo = param[0]
-                contents = ''.join(x for x in param[1:])
-                file["sectors"][sectNo] = bytes(contents,"utf-8")
-        case "fin":
+                sectNo = int.from_bytes(param[0:6],"big")
+                contents = param[7:]
+                file["sectors"][sectNo] = contents
+        case b"finish":
             if file["expectingFile"]:
                 lib.assembleFile(file["sectors"],file["name"])
             file = {"expectingFile":False}
-        case "400": #exception
+        case b"err400": #exception
             if file["expectingFile"]:
                 print("400: doesn't exist or you are not authorized")
                 file["expectingFile"] = {"expectingFile":False}
@@ -84,13 +82,14 @@ while not quit:
 
         case _:
             print("invalid request recieved D:")
+            print(req)
     
 
 
     if len(msgs) != 0:
         lib.sendMessages(sock,srv, msgs, encrypt=encrypt, publicKey=srvPubKey)
     else:
-        lib.sendMessages(sock,srv, ["meowtp ready "], encrypt=encrypt,publicKey=srvPubKey)
+        lib.sendMessages(sock,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey)
 
     if skimp: #lazy? yeah lol
         encrypt = True

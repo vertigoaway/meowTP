@@ -18,8 +18,9 @@ class UDPHandler(socketserver.BaseRequestHandler):
                 data = lib.privKeyDecrypt(data,privKey)
             else:
                 data = data.decode("utf-8").strip()
-        except:
+        except KeyError:
             keyChain[self.client_address[0]] = {"encrypt":False} #new ip! disable encryption
+            print(data)
             data = data.decode("utf-8").strip()
     
         
@@ -28,6 +29,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
         req = lib.getReq(data)
         data = None
         msgs = []
+        print(req)
         try:
             match req:
                 ### key exchange ###
@@ -36,34 +38,34 @@ class UDPHandler(socketserver.BaseRequestHandler):
                             "clientPK":lib.recvPubkey(param),
                             "encrypt":False}
                     
-                    msgs.append("meowtp reqKey "+pem.decode("utf-8"))
+                    msgs.append(b"meowtp reqKey "+pem)
                 case "finKey":
                     keyChain[self.client_address[0]]["encrypt"] = True
-                    msgs.append("meowtp ready ")
+                    msgs.append(b"meowtp ready! ")
                 ######
                 case "sizeOf":
                     size = lib.fileSectSize(param[-1])
-                    msgs.append("meowtp size "+str(size))
+                    msgs.append(b"meowtp sizeOf "+str(size))
 
-                case "up": #fi contents
+                case "upldFi": #fi contents
 
 
                     pass
                 
-                case "down": #fi
-                    file = param[0].replace("/","")
+                case b"downFi": #fi
+                    file = param.decode().replace("/","")
                     sectorDict = lib.disassembleFile(file)
                     
                     for i in sectorDict.keys():
-                        msgs.append("meowtp part "+str(i)+" "+str(sectorDict[i],"utf-8"))
-                    msgs.append("meowtp fin ") #TODO: send a hash?
+                        msgs.append(b"meowtp partFi "+i.to_bytes(6, "big")+b" "+sectorDict[i])
+                    msgs.append(b"meowtp finish ") #TODO: send a hash?
                     print("served "+file+" to "+self.client_address[0])
-                    msgs.append("meowtp ready ")
+                    msgs.append(b"meowtp ready! ")
 
                 case _:
-                    msgs.append("meowtp ready ")
+                    msgs.append(b"meowtp ready! ")
         except FileNotFoundError:
-            msgs.append("meowtp 400 ")
+            msgs.append(b"meowtp err400 ")
         
         lib.sendMessages(sock, self.client_address, msgs,
                    encrypt=keyChain[self.client_address[0]]["encrypt"],
@@ -75,7 +77,7 @@ class UDPHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    with socketserver.UDPServer(("192.168.2.66", lib.udpPort), UDPHandler) as server:
+    with socketserver.UDPServer(("127.0.0.1", lib.udpPort), UDPHandler) as server:
         print("server up!")
 
         privKey, pubKey, pem = lib.createKeyPair()

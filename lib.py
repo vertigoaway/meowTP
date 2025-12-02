@@ -42,7 +42,6 @@ def privKeyDecrypt(msg, key):
                 label=None
             )
         )
-    msg = msg.decode("utf-8")
     return msg
 
 
@@ -57,22 +56,23 @@ def bulkDecrypt(msgs, key):
     return msgs
 
 
-recvPubkey = lambda param: serialization.load_pem_public_key(''.join(x+' ' for x in param).encode("utf-8"))
+recvPubkey = lambda param: serialization.load_pem_public_key(''.join(x+'' for x in param).encode("utf-8"))
 
+getId = lambda msg: msg[0:5]
 
-getParams = lambda msg: msg.split(" ")[2:]
+getParams = lambda msg: msg[14:]
 
-getReq = lambda msg: msg.split(" ")[1]
+getReq = lambda msg: msg[7:13]
 
 
 def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
     if encrypt:
         for i,msg in enumerate(msgs):
-            msgs[i] = pubKeyEncrypt(msg.encode("utf-8"),publicKey)
+            msgs[i] = pubKeyEncrypt(msg,publicKey)
     
     else: #TODO: could be further optimized
         for i,msg in enumerate(msgs):
-            msgs[i] = msg.encode("utf-8")
+            msgs[i] = msg
     
     
     for msg in msgs:
