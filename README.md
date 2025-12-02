@@ -33,7 +33,9 @@ objectives
   - ✅ client can send packets in bulk
   - ✅ client can recieve packets in bulk
   - ✅ client can download files from server
-    - ? download <= 0.5MB with little/no corruption
+    - ✅ binary files 
+    - ✅ ASCII files 
+    - ✅ download <= 0.5MB with little/no corruption
     - ? download <= 1MB with little/no corruption
     - ? download <= 10MB with little/no corruption
     - ? download <= 1GB with little/no corruption
@@ -42,7 +44,7 @@ objectives
   - 🔨 actually use OOP
   - 🟨🔨 perhaps make decent code
   - 🔨 stop fucking using magic numbers
-  - ❌ no more byte<->string fuckery :(
+  - ✅ no more byte<->string fuckery :(
   - ❌ remove as much packet bloat as possible
   - ❌ refactor server to use async (?)
   - ❌ refactor client to use async (?)
