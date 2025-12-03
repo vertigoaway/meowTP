@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import serialization # pyright: ignore[repor
 from cryptography.hazmat.primitives.asymmetric import padding# pyright: ignore[reportMissingImports]
 from cryptography.hazmat.primitives import hashes# pyright: ignore[reportMissingImports]
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
+import threading
 keySize = 4096
 
 
@@ -42,13 +42,23 @@ def privKeyDecrypt(msg, key):
 
 
 def bulkEncrypt(msgs, key):
+    threads = []
     for i, msg in enumerate(msgs):
-        msgs[i] = pubKeyEncrypt(msg,key)
+        thread = threading.Thread(pubKeyEncrypt, args=[msg,key])
+        threads.append(thread)
+        thread.start()
+    for i,t in enumerate(threads):
+        msgs[i] = t.join()
     return msgs
 
 def bulkDecrypt(msgs, key):
+    threads = []
     for i, msg in enumerate(msgs):
-        msgs[i] = privKeyDecrypt(msg,key)
+        thread = threading.Thread(privKeyDecrypt, args=[msg,key])
+        threads.append(thread)
+        thread.start()
+    for i,t in enumerate(threads):
+        msgs[i] = t.join()
     return msgs
 
 

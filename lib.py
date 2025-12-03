@@ -1,7 +1,7 @@
 import math
 import crypto
 import os
-
+import threading
 #in this house we use reverse camel case
 udpPort = 6969
 maxSectorSize = int((446)-32) #cool ass magic numbers ik
@@ -39,8 +39,12 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
 
 def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False):
     if encrypt:
-        for i,msg in enumerate(msgs):
-            msgs[i] = crypto.pubKeyEncrypt(msg,publicKey)
+        if len(msgs) > 3:
+            for i,msg in enumerate(msgs):
+                msgs[i] = crypto.bulkEncrypt(msg,publicKey)
+        else:
+            for i,msg in enumerate(msgs):
+                msgs[i] = crypto.pubKeyEncrypt(msg,publicKey)
     
     if noAsync:
         for msg in msgs:
