@@ -18,14 +18,10 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
 
         try: 
             if keyChain[addr[0]]["encrypt"]:
-                data = crypto.privKeyDecrypt(data,privKey)
-            else:
-                data = data.decode("utf-8").strip()
+                print(keyChain[addr[0]['encrypt']])
         except KeyError:
-            keyChain[addr[0]] = {"encrypt":False} #new ip! disable encryption
-            print(data)
-            data = data.decode("utf-8").strip()
-    
+            keyChain[addr[0]] = {"encrypt":False,"clientPK":None} #new ip! disable encryption
+        lib.parseRawPkts([data],encrypted=keyChain[addr[0]]["encrypt"],privKey=privKey)
         
         
         param = lib.getParams(data)

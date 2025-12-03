@@ -29,8 +29,8 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     else: #no encryption!
         for rawPkt in rawPkts: 
             id = i #packet id not implemented yet
-            req = getReq(rawPkt).decode('utf-8')
-            params = getParams(rawPkt).decode('utf-8')
+            req = getReq(rawPkt)
+            params = getParams(rawPkt)
             pkts[id] = [req,params]
             i+=1
     return pkts
