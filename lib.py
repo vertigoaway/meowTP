@@ -4,10 +4,7 @@ import os
 import threading
 #in this house we use reverse camel case
 udpPort = 6969
-maxSectorSize = int((446)-32) #cool ass magic numbers ik
-#TODO: probably actually use these??
-
-#TODO: stop being a twat and use classes
+maxSectorSize = int((512)) #cool ass magic numbers ik
 
 
 getId = lambda msg: msg[0:5]
