@@ -39,13 +39,7 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
 
 def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False):
     if encrypt:
-        if len(msgs) > 3:
-            for i,msg in enumerate(msgs):
-                msgs[i] = crypto.bulkEncrypt(msg,publicKey)
-        else:
-            for i,msg in enumerate(msgs):
-                msgs[i] = crypto.pubKeyEncrypt(msg,publicKey)
-    
+        msgs = crypto.bulkEncrypt(msgs,publicKey)
     if noAsync:
         for msg in msgs:
             sock.sendto(msg, client_address)
@@ -75,6 +69,7 @@ def readSector(fileName, sector):
 def disassembleFile(fileName):
     sectors = {}
     fileSectorSize = fileSectSize(fileName)
+    
     file = open("serving/"+fileName, "rb")
     for i in range(0,fileSectorSize):
         sectors[i] = file.read(maxSectorSize)
