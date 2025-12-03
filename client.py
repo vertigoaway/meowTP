@@ -85,7 +85,7 @@ while not quit:
                 file = {"expectingFile":False}
         case b"err400": #exception
             if file["expectingFile"]:
-                print("400: doesn't exist or you are not authorized")
+                print("400: doesn't exist / you are not authorized")
                 file["expectingFile"] = {"expectingFile":False}
                 interface(msgs)
 
