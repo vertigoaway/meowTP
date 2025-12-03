@@ -1,8 +1,9 @@
 import socket, lib, crypto, asyncio # pyright: ignore[reportMissingImports]
 import threading
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536*4) 
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536*8) 
 #init
+
 srv = ("127.0.0.1",lib.udpPort)
 privKey, pubKey, pem = crypto.createKeyPair()
 quit = False
@@ -52,11 +53,9 @@ def interface(msgs):
 #begin connection
 sock.sendto(bytes("meowtp reqKey ", "utf-8")+pem, srv)
 print("requesting server public key")
-
 while not quit:
 
     received = sock.recvfrom(4096)[0]
-
     req,param = lib.parseRawPkts([received], encrypted=encrypt, privKey=privKey)[0]
 
     msgs = []
