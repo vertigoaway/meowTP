@@ -20,7 +20,7 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     i=0
     if encrypted:
         for rawPkt in rawPkts:
-            rawPkt = crypto.privKeyDecrypt(privKey)
+            rawPkt = crypto.privKeyDecrypt(rawPkt, privKey)
             id = i #packet id not implemented yet
             req = getReq(rawPkt)
             params = getParams(rawPkt)
@@ -37,18 +37,17 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     
     
 
-def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
+def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False):
     if encrypt:
         for i,msg in enumerate(msgs):
             msgs[i] = crypto.pubKeyEncrypt(msg,publicKey)
     
-    else: #TODO: could be further optimized
-        for i,msg in enumerate(msgs):
-            msgs[i] = msg
-    
-    
-    for msg in msgs:
-        sock.transport.sendto(msg, client_address)
+    if noAsync:
+        for msg in msgs:
+            sock.sendto(msg, client_address)
+    else:
+        for msg in msgs:
+            sock.transport.sendto(msg, client_address)
     return
 
 def fileSectSize(fileName):

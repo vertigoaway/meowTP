@@ -12,15 +12,13 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         self.transport = transport
 
     def datagram_received(self, data, addr):
-        print(f"Received {data} from {addr}")
-        self.transport.sendto(data, addr)  # Echo back the received data
+        print(f"Packet from {addr}")
 
-        print(f"C: {addr[0]}")
 
 
         try: 
             if keyChain[addr[0]]["encrypt"]:
-                data = lib.privKeyDecrypt(data,privKey)
+                data = crypto.privKeyDecrypt(data,privKey)
             else:
                 data = data.decode("utf-8").strip()
         except KeyError:
@@ -34,7 +32,6 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         req = lib.getReq(data)
         data = None
         msgs = []
-        print(req)
         try:
             match req:
                 ### key exchange ###
@@ -50,7 +47,7 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
                 ######
                 case b"sizeOf":
                     size = lib.fileSectSize(param[-1])
-                    msgs.append(b"meowtp sizeOf "+size.to_bytes(6,"big"))
+                    msgs.append(b"meowtp sizeOf "+{size.to_bytes(6,"big")})
 
                 case b"upldFi": #fi contents
 
@@ -63,9 +60,9 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
                     
                     for i in sectorDict.keys():
                         msgs.append(b"meowtp partFi "+i.to_bytes(6, "big")+b" "+sectorDict[i])
-                    msgs.append(b"meowtp finish ") #TODO: send a hash?
+                    msgs.append(b"meowtp finish "+len(sectorDict.keys()).to_bytes(6, "big")) #TODO: send a hash?
                     print("served "+file+" to "+addr[0])
-                    msgs.append(b"meowtp ready! ")
+                    #msgs.append(b"meowtp ready! ")
                 case b"stpNow":
                     print("client "+addr[0]+" disconnected")
                     keyChain[addr[0]]["encrypt"] = False
@@ -85,7 +82,7 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
 
 async def main():
     loop = asyncio.get_running_loop()
-    print("Starting UDP server...")
+    print("Started UDP server")
     # Create a UDP server
     listen = loop.create_datagram_endpoint(lambda: MyDatagramProtocol(), local_addr=('127.0.0.1', lib.udpPort))
     transport, protocol = await listen
@@ -95,7 +92,6 @@ async def main():
         transport.close()
 
 if __name__ == "__main__":
-    print("server up!")
     privKey, pubKey, pem = crypto.createKeyPair()
     keyChain = {}
     asyncio.run(main())
