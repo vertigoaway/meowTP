@@ -19,20 +19,14 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     pkts = [[]*len(rawPkts)]
     i=0
     if encrypted:
-        for rawPkt in rawPkts:
-            rawPkt = crypto.privKeyDecrypt(rawPkt, privKey)
-            id = i #packet id not implemented yet
-            req = getReq(rawPkt)
-            params = getParams(rawPkt)
-            pkts[id] = [req,params]
-            i+=1
-    else: #no encryption!
-        for rawPkt in rawPkts: 
-            id = i #packet id not implemented yet
-            req = getReq(rawPkt)
-            params = getParams(rawPkt)
-            pkts[id] = [req,params]
-            i+=1
+        rawPkts = crypto.bulkDecrypt(rawPkts, privKey)
+
+    for rawPkt in rawPkts: 
+        id = i #packet id not implemented yet
+        req = getReq(rawPkt)
+        params = getParams(rawPkt)
+        pkts[id] = [req,params]
+        i+=1
     return pkts
     
     
