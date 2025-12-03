@@ -1,4 +1,4 @@
-import socket, math, asyncio
+import math
 import crypto
 import os
 

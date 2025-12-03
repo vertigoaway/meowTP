@@ -1,4 +1,4 @@
-import socket, sys, cryptography, lib, crypto, asyncio # pyright: ignore[reportMissingImports]
+import socket, lib, crypto, asyncio # pyright: ignore[reportMissingImports]
 import threading
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536*4) 
