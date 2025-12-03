@@ -1,7 +1,7 @@
-import socket, sys, cryptography, lib, random, crypto # pyright: ignore[reportMissingImports]
-
+import socket, lib, crypto, asyncio # pyright: ignore[reportMissingImports]
+import threading
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536*4) 
 #init
 srv = ("127.0.0.1",lib.udpPort)
 privKey, pubKey, pem = crypto.createKeyPair()
@@ -55,15 +55,10 @@ print("requesting server public key")
 
 while not quit:
 
-    received = sock.recv(4096)
+    received = sock.recvfrom(4096)[0]
 
-    if encrypt:
-        received = crypto.privKeyDecrypt(received, privKey)
-    else:
-        received = str(received, "utf-8")
-    
-    req = lib.getReq(received)
-    param = lib.getParams(received)
+    req,param = lib.parseRawPkts([received], encrypted=encrypt, privKey=privKey)[0]
+
     msgs = []
     match req:
         ### key exchange ###
@@ -85,9 +80,10 @@ while not quit:
                 print(sectNo)
                 file["sectors"][sectNo] = contents
         case b"finish":
-            if file["expectingFile"]:
+            if file["expectingFile"] and len(file["sectors"])>=int.from_bytes(param[0:6],"big"):
+
                 lib.assembleFile(file["sectors"],file["name"])
-            file = {"expectingFile":False}
+                file = {"expectingFile":False}
         case b"err400": #exception
             if file["expectingFile"]:
                 print("400: doesn't exist or you are not authorized")
@@ -101,10 +97,10 @@ while not quit:
 
 
     if len(msgs) != 0:
-        lib.sendMessages(sock,srv, msgs, encrypt=encrypt, publicKey=srvPubKey)
+        lib.sendMessages(sock,srv, msgs, encrypt=encrypt, publicKey=srvPubKey, noAsync=True)
     else:
         if file["expectingFile"] == False:
-            lib.sendMessages(sock,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey)
+            lib.sendMessages(sock,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey, noAsync=True)
         else:
             pass
     if skimp: #lazy? yeah lol

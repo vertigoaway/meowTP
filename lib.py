@@ -1,17 +1,26 @@
-import socket, math, os, crypto
+import math
+import crypto
+import os
 
 #in this house we use reverse camel case
 udpPort = 6969
-keySize = 4096
 maxSectorSize = int((446)-32) #cool ass magic numbers ik
 #TODO: probably actually use these??
 
+#TODO: stop being a twat and use classes
+
+
+getId = lambda msg: msg[0:5]
+
+getParams = lambda msg: msg[14:]
+
+getReq = lambda msg: msg[7:13]
 def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     pkts = [[]*len(rawPkts)]
     i=0
     if encrypted:
         for rawPkt in rawPkts:
-            rawPkt = crypto.privKeyDecrypt(privKey)
+            rawPkt = crypto.privKeyDecrypt(rawPkt, privKey)
             id = i #packet id not implemented yet
             req = getReq(rawPkt)
             params = getParams(rawPkt)
@@ -20,33 +29,25 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     else: #no encryption!
         for rawPkt in rawPkts: 
             id = i #packet id not implemented yet
-            req = getReq(rawPkt).decode('utf-8')
-            params = getParams(rawPkt).decode('utf-8')
+            req = getReq(rawPkt)
+            params = getParams(rawPkt)
             pkts[id] = [req,params]
             i+=1
     return pkts
+    
+    
 
-
-
-getId = lambda msg: msg[0:5]
-
-getParams = lambda msg: msg[14:]
-
-getReq = lambda msg: msg[7:13]
-
-
-def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
+def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False):
     if encrypt:
         for i,msg in enumerate(msgs):
             msgs[i] = crypto.pubKeyEncrypt(msg,publicKey)
     
-    else: #TODO: could be further optimized
-        for i,msg in enumerate(msgs):
-            msgs[i] = msg
-    
-    
-    for msg in msgs:
-        sock.sendto(msg, client_address)
+    if noAsync:
+        for msg in msgs:
+            sock.sendto(msg, client_address)
+    else:
+        for msg in msgs:
+            sock.transport.sendto(msg, client_address)
     return
 
 def fileSectSize(fileName):

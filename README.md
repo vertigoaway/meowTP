@@ -26,7 +26,7 @@ objectives
     - ❌ MiTM proof
       - ❌ Nonces
     - ❌ mitigate spoofing
-    - 🔨 proper exception handling
+    - 🟨 proper exception handling
   - 🟨 server can handle multiple clients
   - ✅ server can send packets in bulk
   - ❌ server can recieve packets in bulk
@@ -40,14 +40,14 @@ objectives
     - ? download <= 10MB with little/no corruption
     - ? download <= 1GB with little/no corruption
   - 🔨 client can upload files to server
-  - 🟨🔨 client has rudimentary cli interface
+  - 🟨 client has rudimentary cli interface
   - 🔨 actually use OOP
   - 🟨🔨 perhaps make decent code
   - 🔨 stop fucking using magic numbers
   - ✅ no more byte<->string fuckery :(
   - ❌ remove as much packet bloat as possible
-  - ❌ refactor server to use async (?)
-  - ❌ refactor client to use async (?)
+  - 🔨 refactor server to use async (?)
+  - 🔨 refactor client to use async (?)
   - ❌ detect and correct packet loss
   - ❌ compress files
   - ❌ negotiate packet size
