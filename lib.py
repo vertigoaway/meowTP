@@ -2,9 +2,12 @@ import math
 import crypto
 import os
 import threading
+import time
+import math as m
 #in this house we use reverse camel case
-udpPort = 6969
-maxSectorSize = int((512)) #cool ass magic numbers ik
+udpPort = 6969 #meowtp port!
+# keysize - sha256 - OAEP - meowtp overhead
+maxSectorSize = m.floor(crypto.keySize/8) - 2*m.ceil(256/8) - 2 - 21
 
 
 getId = lambda msg: msg[0:5]
@@ -13,13 +16,13 @@ getParams = lambda msg: msg[14:]
 
 getReq = lambda msg: msg[7:13]
 def parseRawPkts(rawPkts, encrypted=False, privKey=None):
-    pkts = [[]*len(rawPkts)]
+    pkts = [[]*len(rawPkts)] #allocate pkt array
     i=0
-    if encrypted:
-        rawPkts = crypto.bulkDecrypt(rawPkts, privKey)
+    if encrypted:#decrypt all packets
+        rawPkts = crypto.bulkDecrypt(rawPkts, privKey) 
 
-    for rawPkt in rawPkts: 
-        id = i #packet id not implemented yet
+    for rawPkt in rawPkts:  #extract information
+        id = i #packet ids not implemented yet
         req = getReq(rawPkt)
         params = getParams(rawPkt)
         pkts[id] = [req,params]
@@ -31,12 +34,17 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
 def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False):
     if encrypt:
         msgs = crypto.bulkEncrypt(msgs,publicKey)
+    startTime = time.time()
     if noAsync:
         for msg in msgs:
             sock.sendto(msg, client_address)
+            time.sleep(0.000001)
     else:
         for msg in msgs:
             sock.transport.sendto(msg, client_address)
+            time.sleep(0.000001)
+    duration = time.time()-startTime
+    print(str((512*len(msgs)/duration)/1000/1000)+'MB/s')#speed
     return
 
 def fileSectSize(fileName):
