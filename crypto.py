@@ -19,7 +19,7 @@ def createKeyPair(): #you are never gonna believe what this does
     format=serialization.PublicFormat.SubjectPublicKeyInfo)
     return privKey, pubKey, pem
 
-def pubKeyEncrypt(msg, key):
+def pubKeyEncrypt(msg, key): #single threaded encrypt
     msg = key.encrypt(msg,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
@@ -29,7 +29,7 @@ def pubKeyEncrypt(msg, key):
         )
     return msg
 
-def privKeyDecrypt(msg, key):
+def privKeyDecrypt(msg, key):#single threaded decrypt
     msg = key.decrypt(
             msg,
             padding.OAEP(
@@ -41,7 +41,7 @@ def privKeyDecrypt(msg, key):
     return msg
 
 
-def bulkEncrypt(msgs, key):
+def bulkEncrypt(msgs, key): #MT encryption
     threads = []
     for i, msg in enumerate(msgs):
         thread = threading.Thread(pubKeyEncrypt, args=[msg,key])
@@ -51,7 +51,7 @@ def bulkEncrypt(msgs, key):
         msgs[i] = t.join()
     return msgs
 
-def bulkDecrypt(msgs, key):
+def bulkDecrypt(msgs, key):#MT decryption
     threads = []
     for i, msg in enumerate(msgs):
         thread = threading.Thread(privKeyDecrypt, args=[msg,key])
