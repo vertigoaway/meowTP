@@ -38,13 +38,12 @@ def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAs
     if noAsync:
         for msg in msgs:
             sock.sendto(msg, client_address)
-            time.sleep(0.000001)
     else:
         for msg in msgs:
             sock.transport.sendto(msg, client_address)
-            time.sleep(0.000001)
+            time.sleep(0.00000001)
     duration = time.time()-startTime
-    print(str((512*len(msgs)/duration)/1000/1000)+'MB/s')#speed
+    print(str((maxSectorSize*len(msgs)/duration)/1000/1000)+'MB/s')#speed
     return
 
 def fileSectSize(fileName):
