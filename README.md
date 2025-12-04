@@ -36,9 +36,10 @@ objectives
     - ✅ binary files 
     - ✅ ASCII files 
     - ✅ download <= 0.5MB with little/no corruption
-    - ? download <= 1MB with little/no corruption
-    - ? download <= 10MB with little/no corruption
+    - ✅ download <= 1MB with little/no corruption
+    - ✅ download <= 10MB with little/no corruption
     - ❌ download <= 1GB with little/no corruption
+    - ✅ speed is above 2MB/s (~4MB/s)
   - 🔨 client can upload files to server
   - 🟨 client has rudimentary cli interface
   - 🔨 actually use OOP
@@ -51,9 +52,9 @@ objectives
   - ❌ detect and correct packet loss
   - ❌ compress files
   - ❌ negotiate packet size
-  - ❌ annotate code
+  - 🔨 annotate code
   - 🔨 prettyify code :3
   - ❌ document functions
   - ✅ split lib into more files
   - ❌ add classes to lib
-  - 🔨 multithreading
+  - 🟨 multithreading
