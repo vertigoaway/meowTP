@@ -76,7 +76,6 @@ while not quit:
             if file["expectingFile"]:
                 sectNo = int.from_bytes(param[0:6],"big")
                 contents = param[7:]
-                print(sectNo)
                 file["sectors"][sectNo] = contents
         case b"finish":
             if file["expectingFile"] and len(file["sectors"])>=int.from_bytes(param[0:6],"big"):
