@@ -1,10 +1,6 @@
 import lib, asyncio,crypto # pyright: ignore[reportMissingImports]
 
 
-
-
-
-
 class MyDatagramProtocol(asyncio.DatagramProtocol):
 
 
@@ -14,67 +10,97 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr):
         print(f"Packet from {addr}")
 
+        # ensure we use module-level keyChain
+        global keyChain, privKey
+        if 'keyChain' not in globals():
+            keyChain = {}
 
-
-        try: 
+        try:
             if keyChain[addr[0]]["encrypt"]:
-                print(keyChain[addr[0]['encrypt']])
+                print(keyChain[addr[0]]["encrypt"])
         except KeyError:
-            keyChain[addr[0]] = {"encrypt":False,"clientPK":None} #new ip! disable encryption
-        lib.parseRawPkts([data],encrypted=keyChain[addr[0]]["encrypt"],privKey=privKey)
-        
-        
+            keyChain[addr[0]] = {"encrypt":False, "clientPK":None}  # new ip! disable encryption
+
+        lib.parseRawPkts([data], encrypted=keyChain[addr[0]]["encrypt"], privKey=privKey)
+
         param = lib.getParams(data)
         req = lib.getReq(data)
         data = None
         msgs = []
-        try:
-            match req:
-                ### key exchange ###
-                case "reqKey":
-                    keyChain[addr[0]] = {
-                            "clientPK":crypto.recvPubkey(param),
-                            "encrypt":False}
-                    
-                    msgs.append(b"meowtp reqKey "+pem)
-                case "finKey":
-                    keyChain[addr[0]]["encrypt"] = True
-                    msgs.append(b"meowtp ready! ")
-                ######
-                case b"sizeOf":
-                    size = lib.fileSectSize(param[-1])
-                    msgs.append(b"meowtp sizeOf "+{size.to_bytes(6,"big")})
 
-                case b"upldFi": #fi contents
+        # call the handler correctly
+        req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
 
-
-                    pass
-                
-                case b"downFi": #fi
-                    file = param.decode().replace("/","")
-                    sectorDict = lib.disassembleFile(file)
-                    
-                    for i in sectorDict.keys():
-                        msgs.append(b"meowtp partFi "+i.to_bytes(6, "big")+b" "+sectorDict[i])
-                    msgs.append(b"meowtp finish "+len(sectorDict.keys()).to_bytes(6, "big")) #TODO: send a hash?
-                    print("served "+file+" to "+addr[0])
-                    #msgs.append(b"meowtp ready! ")
-                case b"stpNow":
-                    print("client "+addr[0]+" disconnected")
-                    keyChain[addr[0]]["encrypt"] = False
-                    keyChain[addr[0]]["clientPK"] = None
-
-                case _:
-                    msgs.append(b"meowtp ready! ")
-        except FileNotFoundError:
-            msgs.append(b"meowtp err400 ")
-        
         lib.sendMessages(self, addr, msgs,
                    encrypt=keyChain[addr[0]]["encrypt"],
                    publicKey=keyChain[addr[0]]["clientPK"] )
 
 
+
+def call(req, param, addr, msgs, keyChain):
+    match req:
+        ### key exchange ###
+        case "reqKey":
+            commands.reqKey(addr,param,msgs,keyChain)
+
+        case "finKey":
+            keyChain, msgs = commands.finKey(keyChain,addr,msgs)
+        ######
+        case b"sizeOf":
+            msgs = commands.sizeOf(msgs, param)
+        case b"upldFi": #fi contents
+            commands.upldFi(param,msgs)
+
+            pass
+                
+        case b"downFi": #fi
+            msgs = commands.downFi(param,msgs,addr)
+
+        case b"stpNow":
+            commands.stpNow(addr)
+
+        case _:
+            msgs = commands.other(msgs)
+    return req, param, msgs, keyChain
+
+
+class commands:
+    def reqKey(addr,param,msgs,keyChain):
+        keyChain[addr[0]] = {
+                        "clientPK":crypto.recvPubkey(param),
+                        "encrypt":False},
         
+        msgs.append(b"meowtp reqKey "+pem)
+        return param,msgs,keyChain
+    def finKey(keyChain,addr,msgs):
+        keyChain[addr[0]]["encrypt"] = True
+        msgs.append(b"meowtp ready! ")
+        return keyChain, msgs
+    def sizeOf(msgs, param):
+        size = lib.fileSectSize(param[-1])
+        msgs.append(b"meowtp sizeOf "+{size.to_bytes(6,"big")})
+        return msgs
+    def downFi(param,msgs,addr):
+        file = param.decode().replace("/","")
+        sectorDict = lib.disassembleFile(file)
+        for i in sectorDict.keys():
+            msgs.append(b"meowtp partFi "+i.to_bytes(6, "big")+b" "+sectorDict[i])
+        msgs.append(b"meowtp finish "+len(sectorDict.keys()).to_bytes(6, "big")) #TODO: send a hash?
+        print("served "+file+" to "+addr[0])
+        return msgs
+    def upldFi(param,msgs):
+        pass
+    def stpNow(addr):
+        print("client "+addr[0]+" disconnected")
+        keyChain[addr[0]]["encrypt"] = False
+        keyChain[addr[0]]["clientPK"] = None
+        return keyChain
+    def other(msgs):
+        msgs.append(b"meowtp ready! ")
+        return msgs
+
+
+
 
 async def main():
     loop = asyncio.get_running_loop()
@@ -86,6 +112,7 @@ async def main():
         await asyncio.sleep(3600)  # Run for 1 hour
     finally:
         transport.close()
+
 
 if __name__ == "__main__":
     privKey, pubKey, pem = crypto.createKeyPair()
