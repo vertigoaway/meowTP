@@ -55,7 +55,7 @@ sock.sendto(bytes("meowtp reqKey ", "utf-8")+pem, srv)
 print("requesting server public key")
 while not quit:
 
-    received = sock.recvfrom(4096)[0]
+    received = sock.recvfrom(672)[0]
     req,param = lib.parseRawPkts([received], encrypted=encrypt, privKey=privKey)[0]
 
     msgs = []
