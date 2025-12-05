@@ -39,7 +39,7 @@ objectives
     - ✅ download <= 1MB with little/no corruption
     - ✅ download <= 10MB with little/no corruption
     - ❌ download <= 1GB with little/no corruption
-    - ✅ speed is above 2MB/s (~4MB/s)
+    - ✅ speed is above 2MB/s (~6MB/s)
   - 🔨 client can upload files to server
   - 🟨 client has rudimentary cli interface
   - 🔨 actually use OOP
