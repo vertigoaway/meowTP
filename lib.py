@@ -57,10 +57,6 @@ def readSector(fileName, sector):
     return contents
 
 
-#sectors is a dictionary
-# {sectNo:"sectContents"}
-#TODO: allow & correct missing sectors
-
 def disassembleFile(fileName):
     sectors = {}
     fileSectorSize = fileSectSize(fileName)
