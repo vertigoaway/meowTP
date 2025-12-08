@@ -24,7 +24,7 @@ objectives
     - ❌ persistent keys (?)
     - 🟨 add user authentication
     - ❌ MiTM proof
-      - ❌ Nonces
+      - 🟨 Nonces
     - ❌ mitigate spoofing
     - 🟨 proper exception handling
   - 🟨 server can handle multiple clients
@@ -33,28 +33,27 @@ objectives
   - ✅ client can send packets in bulk
   - ✅ client can recieve packets in bulk
   - ✅ client can download files from server
-    - ✅ binary files 
+    - 🟨 binary files 
     - ✅ ASCII files 
     - ✅ download <= 0.5MB with little/no corruption
     - ✅ download <= 1MB with little/no corruption
     - ✅ download <= 10MB with little/no corruption
     - ❌ download <= 1GB with little/no corruption
     - ✅ speed is above 2MB/s (~6MB/s)
-  - 🔨 client can upload files to server
+  - ❌ client can upload files to server
   - 🟨 client has rudimentary cli interface
   - 🔨 actually use OOP
-  - 🟨🔨 perhaps make decent code
+  - ❌❌❌❌❌ perhaps make decent code
   - 🔨 stop fucking using magic numbers
   - ✅ no more byte<->string fuckery :(
   - 🔨 remove as much packet bloat as possible
-  - 🟨 refactor server to use async (?)
-  - ❌ refactor client to use async (?)
-  - ❌ detect and correct packet loss
+  - ✅ refactor server to use async (?)
+  - ✅ refactor client to use async (?)
+  - ✅ detect and correct packet loss
   - ❌ compress files
   - ❌ negotiate packet size
   - 🔨 annotate code
   - 🔨 prettyify code :3
   - ❌ document functions
   - ✅ split lib into more files
-  - ❌ add classes to lib
   - 🟨 multithreading
