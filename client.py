@@ -1,17 +1,9 @@
 import socket, lib, crypto, asyncio # pyright: ignore[reportMissingImports]
 import threading
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536*8) 
-#init
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536*8) #bigga buffa, prob doesnt matter cause of async
 
 srv = ("127.0.0.1",lib.udpPort)
-privKey, pubKey, pem = crypto.createKeyPair()
-quit = False
-encrypt = False
-skimp = False
-srvPubKey = None
-file = {"expectingFile":False}
-
 
 
 def interface(msgs):
@@ -48,60 +40,101 @@ def interface(msgs):
 
 
 
-
-
 #begin connection
-sock.sendto(bytes("meowtp reqKey ", "utf-8")+pem, srv)
-print("requesting server public key")
-while not quit:
+class CliMtpProto:
+    def __init__(self):
+        self.privKey, self.pubKey, self.pem = crypto.createKeyPair()
+        self.encrypt = False
+        self.skimp = False
+        self.srvPubKey = None
+        self.file = {"expectingFile":False}
+        self.msgs = []
+    def connection_made(self, transport):
+        self.transport = transport
+        print('connection established')
+        transport.sendto(bytes("meowtp reqKey ", "utf-8")+self.pem, (srv))
+    def datagram_received(self, data, addr):
+        encrypt = self.encrypt 
+        skimp = self.skimp 
+        srvPubKey = self.srvPubKey
+        file = self.file 
+        msgs = self.msgs 
+        req,param = lib.parseRawPkts([data], encrypted=encrypt, privKey=self.privKey)[0]
 
-    received = sock.recvfrom(672)[0]
-    req,param = lib.parseRawPkts([received], encrypted=encrypt, privKey=privKey)[0]
-
-    msgs = []
-    match req:
-        ### key exchange ###
-        case "reqKey":# we recieve server key and get requested for client key
-            skimp = True
-            srvPubKey = crypto.recvPubkey(param)
-            msgs.append(b"meowtp finKey ")
-        case "finKey":#ensure both can read messages
-            print("key exchange completed")
-            msgs.append(b"meowtp ready! ?")
-        case b"ready!": #idle
-            msgs,file = interface(msgs)
-
-
-        case b"partFi": #download a "sector" of file
-            if file["expectingFile"]:
-                sectNo = int.from_bytes(param[0:6],"big")
-                contents = param[7:]
-                file["sectors"][sectNo] = contents
-        case b"finish":
-            if file["expectingFile"] and len(file["sectors"])>=int.from_bytes(param[0:6],"big"):
-
-                lib.assembleFile(file["sectors"],file["name"])
-                file = {"expectingFile":False}
-        case b"err400": #exception
-            if file["expectingFile"]:
-                print("400: doesn't exist / you are not authorized")
-                file["expectingFile"] = {"expectingFile":False}
-                interface(msgs)
-
-        case _:
-            print("invalid request recieved D:")
-            print(req)
-    
+        match req:
+            ### key exchange ###
+            case "reqKey":# we recieve server key and get requested for client key
+                skimp = True
+                srvPubKey = crypto.recvPubkey(param)
+                msgs.append(b"meowtp finKey ")
+            case "finKey":#ensure both can read messages
+                print("key exchange completed")
+                msgs.append(b"meowtp ready! ?")
+            case b"ready!": #idle
+                msgs,file = interface(msgs)
 
 
-    if len(msgs) != 0:
-        lib.sendMessages(sock,srv, msgs, encrypt=encrypt, publicKey=srvPubKey, noAsync=True)
-    else:
-        if file["expectingFile"] == False:
-            lib.sendMessages(sock,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey, noAsync=True)
+            case b"partFi": #download a "sector" of file
+                if file["expectingFile"]:
+                    sectNo = int.from_bytes(param[0:6],"big")
+                    contents = param[7:]
+                    file["sectors"][sectNo] = contents
+            case b"finish":
+                if file["expectingFile"] and len(file["sectors"])>=int.from_bytes(param[0:6],"big"):
+
+                    lib.assembleFile(file["sectors"],file["name"])
+                    file = {"expectingFile":False}
+            case b"err400": #exception
+                if file["expectingFile"]:
+                    print("400: doesn't exist / you are not authorized")
+                    file["expectingFile"] = {"expectingFile":False}
+                    interface(msgs)
+
+            case _:
+                print("invalid request recieved D:")
+                print(req)
+        
+
+
+        if len(msgs) != 0:
+            lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey, noAsync=False)
         else:
-            pass
-    if skimp: #lazy? yeah lol
-        encrypt = True
-        skimp = False
+            if file["expectingFile"] == False:
+                lib.sendMessages(self,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey, noAsync=False)
+            else:
+                pass
+        if skimp: #lazy? yeah lol
+            encrypt = True
+            skimp = False
 
+
+        self.encrypt = encrypt
+        self.skimp = skimp
+        self.srvPubKey = srvPubKey
+        self.file = file
+        self.msgs = []
+    def error_received(self, exc):
+        print('Error received:', exc)
+
+    def connection_lost(self, exc):
+        print("Connection lost D:")
+
+
+
+async def main():
+
+    loop = asyncio.get_running_loop()
+
+    on_con_lost = loop.create_future()
+
+    transport, protocol = await loop.create_datagram_endpoint(
+        lambda: CliMtpProto(),
+        remote_addr=srv)
+
+    try:
+        await on_con_lost
+    finally:
+        transport.close()
+
+
+asyncio.run(main())
