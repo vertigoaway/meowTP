@@ -1,15 +1,13 @@
-import lib, asyncio,crypto # pyright: ignore[reportMissingImports]
-
+import lib, asyncio,crypto, random
 
 class MyDatagramProtocol(asyncio.DatagramProtocol):
-
+#udp is for TRUE sigma males
 
     def connection_made(self, transport):
         self.transport = transport
 
     def datagram_received(self, data, addr):
         print(f"Packet from {addr}")
-
         # ensure we use module-level keyChain
         global keyChain, privKey
         if 'keyChain' not in globals():
@@ -28,7 +26,6 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         data = None
         msgs = []
 
-        # call the handler correctly
         req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
 
         lib.sendMessages(self, addr, msgs,
@@ -48,13 +45,15 @@ def call(req, param, addr, msgs, keyChain):
         ######
         case b"sizeOf":
             msgs = commands.sizeOf(msgs, param)
-        case b"upldFi": #fi contents
+        case b"upldFi": #oh god
             commands.upldFi(param,msgs)
 
             pass
                 
-        case b"downFi": #fi
+        case b"downFi": #request to download a file
             msgs = commands.downFi(param,msgs,addr)
+        case b"partFi": # request for a single sector
+            msgs = commands.partFi(param,msgs,addr)
 
         case b"stpNow":
             commands.stpNow(addr)
@@ -74,7 +73,9 @@ class commands:
         return param,msgs,keyChain
     def finKey(keyChain,addr,msgs):
         keyChain[addr[0]]["encrypt"] = True
-        msgs.append(b"meowtp ready! ")
+        #straight up nonce it (dead code but too lazy to remove atm)
+        nonce = random.randint(0,99999)
+        msgs.append(b"meowtp ready! "+nonce.to_bytes(6))
         return keyChain, msgs
     def sizeOf(msgs, param):
         size = lib.fileSectSize(param[-1])
@@ -84,9 +85,28 @@ class commands:
         file = param.decode().replace("/","")
         sectorDict = lib.disassembleFile(file)
         for i in sectorDict.keys():
+            #try:
+            #    print(f"serving sector {i} len={len(sectorDict[i])} to {addr[0]}")
+            #except Exception:
+            #    print(f"serving sector {i} to {addr[0]}")
             msgs.append(b"meowtp partFi "+i.to_bytes(6, "big")+b" "+sectorDict[i])
         msgs.append(b"meowtp finish "+len(sectorDict.keys()).to_bytes(6, "big")) #TODO: send a hash?
         print("served "+file+" to "+addr[0])
+        return msgs
+    def partFi(param,msgs,addr):
+        try:
+            sectNo = int.from_bytes(param[0:6], "big")
+            file = param[7:].decode().replace("/", "")
+        except Exception as e:
+            print("bad partFi request", e)
+            return msgs
+
+        try:
+            contents = lib.readSector(file, sectNo)
+            #print(f"partFi handler: sending sector {sectNo} len={len(contents)} to {addr[0]}")
+            msgs.append(b"meowtp partFi "+sectNo.to_bytes(6, "big")+b" "+contents)
+        except Exception as e:
+            print(f"error reading sector {sectNo} of {file}: {e}")
         return msgs
     def upldFi(param,msgs):
         pass
@@ -105,11 +125,10 @@ class commands:
 async def main():
     loop = asyncio.get_running_loop()
     print("Started UDP server")
-    # Create a UDP server
     listen = loop.create_datagram_endpoint(lambda: MyDatagramProtocol(), local_addr=('127.0.0.1', lib.udpPort))
     transport, protocol = await listen
     try:
-        await asyncio.sleep(3600)  # Run for 1 hour
+        await asyncio.sleep(3600) 
     finally:
         transport.close()
 

@@ -34,7 +34,7 @@ def interface(msgs):
             file = {"expectingFile":False}
         case _:
             print("err")
-            raise Exception("invalid command")
+            raise Exception("invalid command"+cmd)
         
     return msgs,file
 
@@ -79,11 +79,54 @@ class CliMtpProto:
                     sectNo = int.from_bytes(param[0:6],"big")
                     contents = param[7:]
                     file["sectors"][sectNo] = contents
+                    #print(f"received sector {sectNo} len={len(contents)}")
+                    if "missing" in file: #missing sectors D:
+                        try:
+                            before = len(file["missing"])
+                            file["missing"].discard(sectNo)
+                            after = len(file["missing"])
+                            if after != before:
+                                #print(f"removed sector {sectNo} from missing (remaining {after})")
+                                expected = file.get("expected") 
+                                if expected is not None and len(file["sectors"]) >= expected: #yahoo!
+                                    try:
+                                        print("all missing sectors received — assembling file")
+                                        lib.assembleFile(file["sectors"], file["name"])
+                                    except Exception as e:
+                                        print("error assembling file:", e)
+                                    file = {"expectingFile":False}
+                        except Exception:
+                            file["missing"] = set(file.get("missing", set()))
+                            file["missing"].discard(sectNo)
+                            print(f"removed sector {sectNo} from missing (set recreated)")
+                    if "retries" in file:
+                        file["retries"] = 0
             case b"finish":
-                if file["expectingFile"] and len(file["sectors"])>=int.from_bytes(param[0:6],"big"):
-
-                    lib.assembleFile(file["sectors"],file["name"])
-                    file = {"expectingFile":False}
+                if file["expectingFile"]:
+                    expected = int.from_bytes(param[0:6], "big")
+                    got = len(file["sectors"])
+                    # store expected count for later checks
+                    file["expected"] = expected
+                    if got >= expected:
+                        # all sectors received
+                        lib.assembleFile(file["sectors"], file["name"])
+                        file = {"expectingFile":False}
+                    else:
+                        # detect missing sectors and request them
+                        missing = [i for i in range(expected) if i not in file["sectors"]]
+                        print(f"finish received: expected {expected}, got {got}, missing {len(missing)} sectors")
+                        # store missing set and retry metadata
+                        file.setdefault("missing", set()).update(missing)
+                        file.setdefault("retries", 0)
+                        # send requests for missing sectors
+                        self._send_missing_requests()
+                        # schedule a check after a short delay to retry if still missing
+                        try:
+                            loop = asyncio.get_running_loop()
+                            loop.call_later(1.0, lambda: asyncio.create_task(self._check_missing()))
+                        except Exception:
+                            # fallback: use threading timer if no running loop
+                            threading.Timer(1.0, lambda: asyncio.run(self._check_missing())).start()
             case b"err400": #exception
                 if file["expectingFile"]:
                     print("400: doesn't exist / you are not authorized")
@@ -118,6 +161,63 @@ class CliMtpProto:
 
     def connection_lost(self, exc):
         print("Connection lost D:")
+
+    async def _check_missing(self):
+        """Check for missing sectors, resend requests up to a retry limit, and assemble when complete."""
+        MAX_RETRIES = 5
+        RETRY_DELAY = 1.0
+        file = self.file
+        if not file.get("expectingFile"):
+            return
+
+        missing = sorted(list(file.get("missing", set())))
+        if not missing:
+            # nothing missing, try assemble
+            try:
+                # expected can be stored from finish
+                expected = file.get("expected")
+                # only assemble if we have enough sectors
+                if expected is None or len(file["sectors"]) >= expected:
+                    lib.assembleFile(file["sectors"], file["name"])
+                self.file = {"expectingFile":False}
+            except Exception:
+                pass
+            return
+
+        retries = file.get("retries", 0)
+        if retries >= MAX_RETRIES:
+            print(f"Failed to retrieve {len(missing)} sectors after {retries} retries: {missing}")
+            return
+
+        # resend requests for missing sectors
+        file["retries"] = retries + 1
+        print(f"Retrying missing sectors (attempt {file['retries']}/{MAX_RETRIES}): {missing}")
+        self._send_missing_requests()
+        # schedule next check
+        loop = asyncio.get_running_loop()
+        loop.call_later(RETRY_DELAY, lambda: asyncio.create_task(self._check_missing()))
+
+    def _send_missing_requests(self):
+        """Send partFi requests to the server for each missing sector."""
+        file = self.file
+        if not file.get("expectingFile"):
+            return
+        missing = sorted(list(file.get("missing", set())))
+        if not missing:
+            return
+
+        msgs = []
+        print(f"_send_missing_requests: preparing {len(missing)} requests for missing sectors: {missing}")
+        for sectNo in missing:
+            # request format: "meowtp partFi <6byte sectNo> <filename>"
+            msgs.append(bytes("meowtp partFi ", "utf-8") + sectNo.to_bytes(6, "big") + b" " + file["name"].encode())
+
+        # send messages immediately
+        try:
+            print(f"_send_missing_requests: sending {len(msgs)} messages")
+            lib.sendMessages(self, srv, msgs, encrypt=self.encrypt, publicKey=self.srvPubKey, noAsync=False)
+        except Exception as e:
+            print("error sending missing-sector requests:", e)
 
 
 
