@@ -31,16 +31,13 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     
     
 
-def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False):
+def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False,nonce=None):
     if encrypt:
-        msgs = crypto.bulkEncrypt(msgs,publicKey)
+        msgs = crypto.bulkEncrypt(msgs,publicKey,nonce)
     startTime = time.time()
-    if noAsync:
-        for msg in msgs:
-            sock.sendto(msg, client_address)
-    else:
-        for msg in msgs:
-            sock.transport.sendto(msg, client_address)
+
+    for msg in msgs:
+        sock.transport.sendto(msg, client_address)
     duration = time.time()-startTime
     print(str((maxSectorSize*len(msgs)/duration)/1000/1000)+'MB/s')#speed
     return
@@ -52,8 +49,9 @@ def fileSectSize(fileName):
 
 def readSector(fileName, sector):
     size = fileSectSize(fileName)
-    file = open("./serving/"+fileName,"rb")
-    file.seek(0,int(maxSectorSize*sector))
+    file = open("./serving/"+fileName, "rb")
+    # seek to the sector start (offset), not pass whence incorrectly
+    file.seek(int(maxSectorSize * sector))
     contents = file.read(maxSectorSize)
     file.close()
     return contents
@@ -77,8 +75,10 @@ def disassembleFile(fileName):
 def assembleFile(sectors, fileName):
     fileContents = b""
     file = open("downloaded/"+fileName, "wb")
-    for i in sectors.keys():
+    # write sectors in order of their index to ensure correct file assembly
+    for i in sorted(sectors.keys()):
         file.write(sectors[i])
     file.write(fileContents)
     file.close()
     return
+
