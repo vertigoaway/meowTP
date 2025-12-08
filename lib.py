@@ -31,9 +31,10 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     
     
 
-def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False,nonce=None):
+def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
     if encrypt:
-        msgs = crypto.bulkEncrypt(msgs,publicKey,nonce)
+        msgs = crypto.bulkEncrypt(msgs,publicKey)
+        print("enc:",str(msgs))
     startTime = time.time()
 
     for msg in msgs:

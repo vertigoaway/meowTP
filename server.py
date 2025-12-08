@@ -2,6 +2,8 @@ import lib, asyncio,crypto, random
 
 class MyDatagramProtocol(asyncio.DatagramProtocol):
 #udp is for TRUE sigma males
+    def __init__(self):
+        self.keyChain = {}
 
     def connection_made(self, transport):
         self.transport = transport
@@ -9,10 +11,8 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr):
         print(f"Packet from {addr}")
         # ensure we use module-level keyChain
-        global keyChain, privKey
-        if 'keyChain' not in globals():
-            keyChain = {}
-
+        keyChain = self.keyChain
+        print(keyChain)
         try:
             if keyChain[addr[0]]["encrypt"]:
                 print(keyChain[addr[0]]["encrypt"])
@@ -27,21 +27,22 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         msgs = []
 
         req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
-
+        print(req)
+        print(keyChain[addr[0]]["encrypt"])
         lib.sendMessages(self, addr, msgs,
                    encrypt=keyChain[addr[0]]["encrypt"],
                    publicKey=keyChain[addr[0]]["clientPK"] )
-
+        self.keyChain = keyChain
 
 
 def call(req, param, addr, msgs, keyChain):
     match req:
         ### key exchange ###
-        case "reqKey":
-            commands.reqKey(addr,param,msgs,keyChain)
-
-        case "finKey":
+        case b"reqKey":
+            param,msgs,keyChain = commands.reqKey(addr,param,msgs,keyChain)
+        case b"finKey":
             keyChain, msgs = commands.finKey(keyChain,addr,msgs)
+            keyChain[addr[0]]["encrypt"] = True
         ######
         case b"sizeOf":
             msgs = commands.sizeOf(msgs, param)
@@ -67,15 +68,13 @@ class commands:
     def reqKey(addr,param,msgs,keyChain):
         keyChain[addr[0]] = {
                         "clientPK":crypto.recvPubkey(param),
-                        "encrypt":False},
+                        "encrypt":False}
         
         msgs.append(b"meowtp reqKey "+pem)
         return param,msgs,keyChain
     def finKey(keyChain,addr,msgs):
         keyChain[addr[0]]["encrypt"] = True
-        #straight up nonce it (dead code but too lazy to remove atm)
-        nonce = random.randint(0,99999)
-        msgs.append(b"meowtp ready! "+nonce.to_bytes(6))
+        msgs.append(b"meowtp ready!")
         return keyChain, msgs
     def sizeOf(msgs, param):
         size = lib.fileSectSize(param[-1])

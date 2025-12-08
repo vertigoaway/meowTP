@@ -54,22 +54,22 @@ class CliMtpProto:
         print('connection established')
         transport.sendto(bytes("meowtp reqKey ", "utf-8")+self.pem, (srv))
     def datagram_received(self, data, addr):
-        encrypt = self.encrypt 
+        encrypt = self.encrypt
         skimp = self.skimp 
         srvPubKey = self.srvPubKey
         file = self.file 
         msgs = self.msgs 
         req,param = lib.parseRawPkts([data], encrypted=encrypt, privKey=self.privKey)[0]
-
+        print(req)
         match req:
             ### key exchange ###
-            case "reqKey":# we recieve server key and get requested for client key
-                skimp = True
+            case b"reqKey":# we recieve server key and get requested for client key
                 srvPubKey = crypto.recvPubkey(param)
                 msgs.append(b"meowtp finKey ")
-            case "finKey":#ensure both can read messages
+                skimp = True
+            case b"finKey":#ensure both can read messages
                 print("key exchange completed")
-                msgs.append(b"meowtp ready! ?")
+                msgs.append(b"meowtp finKey")
             case b"ready!": #idle
                 msgs,file = interface(msgs)
 
@@ -140,22 +140,21 @@ class CliMtpProto:
 
 
         if len(msgs) != 0:
-            lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey, noAsync=False)
+            lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey)
         else:
             if file["expectingFile"] == False:
-                lib.sendMessages(self,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey, noAsync=False)
+                lib.sendMessages(self,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey)
             else:
                 pass
         if skimp: #lazy? yeah lol
             encrypt = True
             skimp = False
-
-
+        print(msgs)
         self.encrypt = encrypt
         self.skimp = skimp
         self.srvPubKey = srvPubKey
         self.file = file
-        self.msgs = []
+        self.msgs = msgs 
     def error_received(self, exc):
         print('Error received:', exc)
 
