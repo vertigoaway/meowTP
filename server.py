@@ -40,10 +40,10 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
 def call(req, param, addr, msgs, keyChain):
     match req:
         ### key exchange ###
-        case "reqKey":
+        case b"reqKey":
             commands.reqKey(addr,param,msgs,keyChain)
 
-        case "finKey":
+        case b"finKey":
             keyChain, msgs = commands.finKey(keyChain,addr,msgs)
         ######
         case b"sizeOf":
@@ -68,7 +68,7 @@ class commands:
     def reqKey(addr,param,msgs,keyChain):
         keyChain[addr[0]] = {
                         "clientPK":crypto.recvPubkey(param),
-                        "encrypt":False},
+                        "encrypt":False}
         
         msgs.append(b"meowtp reqKey "+pem)
         return param,msgs,keyChain

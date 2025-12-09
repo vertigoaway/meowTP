@@ -7,13 +7,7 @@ srv = ("127.0.0.1",lib.udpPort)
 
 
 def interface(msgs):
-    print("enter a request!")
-    print("Download:")
-    print('\t downFi <filename>')
-    print("Upload:")
-    print('\t upldFi <filename>')
-    print("Quit:")
-    print("\t quit")
+    print("enter a request!\nDownload:\n\tdownFi <filename>\nUpload:\n\tupldFi <filename>\nQuit:\n\tquit")
     cmd = "meowtp "+input("meowtp:")
     req = lib.getReq(cmd)
     param = lib.getParams(cmd)
@@ -63,11 +57,11 @@ class CliMtpProto:
 
         match req:
             ### key exchange ###
-            case "reqKey":# we recieve server key and get requested for client key
+            case b"reqKey":# we recieve server key and get requested for client key
                 skimp = True
                 srvPubKey = crypto.recvPubkey(param)
                 msgs.append(b"meowtp finKey ")
-            case "finKey":#ensure both can read messages
+            case b"finKey":#ensure both can read messages
                 print("key exchange completed")
                 msgs.append(b"meowtp ready! ?")
             case b"ready!": #idle
