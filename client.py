@@ -60,14 +60,13 @@ class CliMtpProto:
         file = self.file 
         msgs = self.msgs 
         req,param = lib.parseRawPkts([data], encrypted=encrypt, privKey=self.privKey)[0]
-
         match req:
             ### key exchange ###
-            case "reqKey":# we recieve server key and get requested for client key
+            case b"reqKey":# we recieve server key and get requested for client key
                 skimp = True
                 srvPubKey = crypto.recvPubkey(param)
                 msgs.append(b"meowtp finKey ")
-            case "finKey":#ensure both can read messages
+            case b"finKey":#ensure both can read messages
                 print("key exchange completed")
                 msgs.append(b"meowtp ready! ?")
             case b"ready!": #idle
@@ -86,7 +85,7 @@ class CliMtpProto:
                             file["missing"].discard(sectNo)
                             after = len(file["missing"])
                             if after != before:
-                                #print(f"removed sector {sectNo} from missing (remaining {after})")
+                                print(f"removed sector {sectNo} from missing (remaining {after})")
                                 expected = file.get("expected") 
                                 if expected is not None and len(file["sectors"]) >= expected: #yahoo!
                                     try:
@@ -140,10 +139,10 @@ class CliMtpProto:
 
 
         if len(msgs) != 0:
-            lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey, noAsync=False)
+            lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey)
         else:
             if file["expectingFile"] == False:
-                lib.sendMessages(self,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey, noAsync=False)
+                lib.sendMessages(self,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey)
             else:
                 pass
         if skimp: #lazy? yeah lol
@@ -215,7 +214,8 @@ class CliMtpProto:
         # send messages immediately
         try:
             print(f"_send_missing_requests: sending {len(msgs)} messages")
-            lib.sendMessages(self, srv, msgs, encrypt=self.encrypt, publicKey=self.srvPubKey, noAsync=False)
+            lib.sendMessages(self, srv, msgs, encrypt=self.encrypt, publicKey=self.srvPubKey)
+            msgs = []
         except Exception as e:
             print("error sending missing-sector requests:", e)
 
