@@ -14,18 +14,15 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
 
         try:
             if keyChain[addr[0]]["encrypt"]:
-                print(keyChain[addr[0]]["encrypt"])
+                pass
         except KeyError:
             keyChain[addr[0]] = {"encrypt":False, "clientPK":None}  # new ip! disable encryption
 
-        lib.parseRawPkts([data], encrypted=keyChain[addr[0]]["encrypt"], privKey=privKey)
-
-        param = lib.getParams(data)
-        req = lib.getReq(data)
+        req,param = lib.parseRawPkts([data], encrypted=keyChain[addr[0]]["encrypt"], privKey=privKey)[0]
         data = None
+
         msgs = []
         print(f"Packet from {addr}: {req}")
-
         # call the handler correctly
         req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
 
@@ -39,7 +36,7 @@ def call(req, param, addr, msgs, keyChain):
     match req:
         ### key exchange ###
         case b"reqKey":
-            commands.reqKey(addr,param,msgs,keyChain)
+            param,msgs,keyChain = commands.reqKey(addr,param,msgs,keyChain)
 
         case b"finKey":
             keyChain, msgs = commands.finKey(keyChain,addr,msgs)
@@ -58,7 +55,7 @@ def call(req, param, addr, msgs, keyChain):
             commands.stpNow(addr)
 
         case _:
-            msgs = commands.other(msgs)
+            msgs = commands.other(msgs,req)
     return req, param, msgs, keyChain
 
 
@@ -95,8 +92,8 @@ class commands:
         keyChain[addr[0]]["clientPK"] = None
         return keyChain
     
-    def other(msgs):
-        print("unknown cmd")
+    def other(msgs, req):
+        print("unknown cmd: "+str(req))
         msgs.append(b"meowtp ready! ")
         return msgs
 
