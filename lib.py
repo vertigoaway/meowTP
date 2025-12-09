@@ -31,16 +31,12 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     
     
 
-def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None, noAsync=False):
+def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
+    startTime = time.time()
     if encrypt:
         msgs = crypto.bulkEncrypt(msgs,publicKey)
-    startTime = time.time()
-    if noAsync:
-        for msg in msgs:
-            sock.sendto(msg, client_address)
-    else:
-        for msg in msgs:
-            sock.transport.sendto(msg, client_address)
+    for msg in msgs:
+        sock.transport.sendto(msg, client_address)
     duration = time.time()-startTime
     print(str((maxSectorSize*len(msgs)/duration)/1000/1000)+'MB/s')#speed
     return
@@ -74,11 +70,21 @@ def disassembleFile(fileName):
 
 
 
-def assembleFile(sectors, fileName):
-    fileContents = b""
+def assembleFile(sectors, fileName, size=None):
     file = open("downloaded/"+fileName, "wb")
-    for i in sectors.keys():
-        file.write(sectors[i])
-    file.write(fileContents)
+    if size!=None:#smart assembler
+        file.write(b'\x00'*size*maxSectorSize) #preall file
+
+        for i in sectors.keys():
+            file.seek(0,i*maxSectorSize)
+            file.write(sectors[i])
+    
+    else:#old dumb assemble
+        fileContents = b""
+
+        for i in sectors.keys():
+            fileContents+=sectors[i]
+        file.write(fileContents)
+        
     file.close()
     return

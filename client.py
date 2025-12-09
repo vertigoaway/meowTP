@@ -1,8 +1,5 @@
-import socket, lib, crypto, asyncio # pyright: ignore[reportMissingImports]
-import threading
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536*8) #bigga buffa, prob doesnt matter cause of async
-
+import lib, crypto, asyncio # pyright: ignore[reportMissingImports]
+ 
 srv = ("127.0.0.1",lib.udpPort)
 
 
@@ -91,10 +88,10 @@ class CliMtpProto:
 
 
         if len(msgs) != 0:
-            lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey, noAsync=False)
+            lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey)
         else:
             if file["expectingFile"] == False:
-                lib.sendMessages(self,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey, noAsync=False)
+                lib.sendMessages(self,srv, [b"meowtp ready!"], encrypt=encrypt,publicKey=srvPubKey)
             else:
                 pass
         if skimp: #lazy? yeah lol
