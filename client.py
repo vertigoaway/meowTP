@@ -68,7 +68,7 @@ class CliMtpProto:
                 msgs.append(b"meowtp finKey ")
             case b"finKey":#ensure both can read messages
                 print("key exchange completed")
-                msgs.append(b"meowtp ready! ?")
+                msgs.append(b"meowtp finKey")
             case b"ready!": #idle
                 msgs,file = interface(msgs)
 
