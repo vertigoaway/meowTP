@@ -10,8 +10,9 @@ def interface(msgs):
     param = lib.getParams(cmd)
     match req:
         case "downFi":
-            cmd = cmd.replace("/","")
+            cmd = cmd.replace("/","").strip()
             msgs.append(cmd.encode())
+            msgs.append(b"meowtp sizeOf "+bytes(cmd.split(' ')[-1],'utf-8'))
             file = {"expectingFile":True,"name":cmd[14:],"sectors":{}}
         case "upldFi":
             cmd = cmd.replace("/","")
@@ -60,11 +61,13 @@ class CliMtpProto:
                 msgs.append(b"meowtp finKey ")
             case b"finKey":#ensure both can read messages
                 print("key exchange completed")
-                msgs.append(b"meowtp ready! ?")
+                msgs.append(b"meowtp ready!")
             case b"ready!": #idle
                 msgs,file = interface(msgs)
-
-
+            case b"sizeOf":
+                if file["expectingFile"]:
+                    file["size"] = int.from_bytes(param,'big',signed=False)
+                return
             case b"partFi": #download a "sector" of file
                 if file["expectingFile"]:
                     sectNo = int.from_bytes(param[0:6],"big")
@@ -86,7 +89,6 @@ class CliMtpProto:
                 print(req)
         
 
-
         if len(msgs) != 0:
             lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey)
         else:
@@ -97,7 +99,6 @@ class CliMtpProto:
         if skimp: #lazy? yeah lol
             encrypt = True
             skimp = False
-
 
         self.encrypt = encrypt
         self.skimp = skimp

@@ -2,13 +2,10 @@ import lib, asyncio,crypto # pyright: ignore[reportMissingImports]
 
 
 class MyDatagramProtocol(asyncio.DatagramProtocol):
-
-
     def connection_made(self, transport):
         self.transport = transport
 
     def datagram_received(self, data, addr):
-        print(f"Packet from {addr}")
 
         # ensure we use module-level keyChain
         global keyChain, privKey
@@ -27,6 +24,7 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         req = lib.getReq(data)
         data = None
         msgs = []
+        print(f"Packet from {addr}: {req}")
 
         # call the handler correctly
         req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
@@ -69,7 +67,6 @@ class commands:
         keyChain[addr[0]] = {
                         "clientPK":crypto.recvPubkey(param),
                         "encrypt":False}
-        
         msgs.append(b"meowtp reqKey "+pem)
         return param,msgs,keyChain
     def finKey(keyChain,addr,msgs):
@@ -88,14 +85,18 @@ class commands:
         msgs.append(b"meowtp finish "+len(sectorDict.keys()).to_bytes(6, "big")) #TODO: send a hash?
         print("served "+file+" to "+addr[0])
         return msgs
+    
     def upldFi(param,msgs):
         pass
+
     def stpNow(addr):
         print("client "+addr[0]+" disconnected")
         keyChain[addr[0]]["encrypt"] = False
         keyChain[addr[0]]["clientPK"] = None
         return keyChain
+    
     def other(msgs):
+        print("unknown cmd")
         msgs.append(b"meowtp ready! ")
         return msgs
 
