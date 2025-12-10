@@ -6,15 +6,15 @@ import time
 import math as m
 #in this house we use reverse camel case
 udpPort = 6969 #meowtp port!
-# keysize - sha256 - OAEP - meowtp overhead
-maxSectorSize = m.floor(crypto.keySize/8) - 2*m.ceil(256/8) - 2 - 21
+# keysize - sha256 - OAEP - overhead
+maxSectorSize = m.floor(crypto.keySize/8) - 2*m.ceil(256/8) - 20
 
 
-getId = lambda msg: msg[0:5]
+getNonce = lambda msg: msg[0:3]
 
-getParams = lambda msg: msg[14:]
+getParams = lambda msg: msg[10:]
 
-getReq = lambda msg: msg[7:13]
+getReq = lambda msg: msg[4:10]
 def parseRawPkts(rawPkts, encrypted=False, privKey=None):
     pkts = [[]*len(rawPkts)] #allocate pkt array
     i=0
@@ -22,24 +22,29 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
         rawPkts = crypto.bulkDecrypt(rawPkts, privKey) 
 
     for rawPkt in rawPkts:  #extract information
-        id = i #packet ids not implemented yet
+        nonce = getNonce(rawPkt)
         req = getReq(rawPkt)
         params = getParams(rawPkt)
-        pkts[id] = [req,params]
+        pkts[i] = [nonce,req,params]
         i+=1
+    print(pkts)
     return pkts
     
     
 
-def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None):
+def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None,nonce=0):
     startTime = time.time()
+    #its noncing time
+    for i,msg in enumerate(msgs):
+        msgs[i]=nonce.to_bytes(4,'big')+msg
+        nonce+=1
     if encrypt:
         msgs = crypto.bulkEncrypt(msgs,publicKey)
     for msg in msgs:
         sock.transport.sendto(msg, client_address)
     duration = time.time()-startTime
     print(str((maxSectorSize*len(msgs)/duration)/1000/1000)+'MB/s')#speed
-    return
+    return nonce
 
 def fileSectSize(fileName):
     size = math.ceil(os.path.getsize("./serving/"+fileName)/maxSectorSize)

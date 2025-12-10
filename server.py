@@ -16,9 +16,9 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
             if keyChain[addr[0]]["encrypt"]:
                 pass
         except KeyError:
-            keyChain[addr[0]] = {"encrypt":False, "clientPK":None}  # new ip! disable encryption
+            keyChain[addr[0]] = {"encrypt":False, "clientPK":None, "nonce":0}  # new ip! disable encryption
 
-        req,param = lib.parseRawPkts([data], encrypted=keyChain[addr[0]]["encrypt"], privKey=privKey)[0]
+        pktNonce,req,param = lib.parseRawPkts([data], encrypted=keyChain[addr[0]]["encrypt"], privKey=privKey)[0]
         data = None
 
         msgs = []
@@ -26,9 +26,9 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         # call the handler correctly
         req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
 
-        lib.sendMessages(self, addr, msgs,
+        keyChain[addr[0]]["nonce"] = lib.sendMessages(self, addr, msgs,
                    encrypt=keyChain[addr[0]]["encrypt"],
-                   publicKey=keyChain[addr[0]]["clientPK"] )
+                   publicKey=keyChain[addr[0]]["clientPK"],nonce=keyChain[addr[0]]["nonce"])
 
 
 
@@ -63,23 +63,24 @@ class commands:
     def reqKey(addr,param,msgs,keyChain):
         keyChain[addr[0]] = {
                         "clientPK":crypto.recvPubkey(param),
-                        "encrypt":False}
-        msgs.append(b"meowtp reqKey "+pem)
+                        "encrypt":False,
+                        "nonce":0}
+        msgs.append(b"reqKey"+pem)
         return param,msgs,keyChain
     def finKey(keyChain,addr,msgs):
         keyChain[addr[0]]["encrypt"] = True
-        msgs.append(b"meowtp ready! ")
+        msgs.append(b"ready!")
         return keyChain, msgs
     def sizeOf(msgs, param):
-        size = lib.fileSectSize(param[-1])
-        msgs.append(b"meowtp sizeOf "+{size.to_bytes(6,"big")})
+        size = lib.fileSectSize(param.decode('utf-8'))
+        msgs.append(b"sizeOf"+size.to_bytes(6,"big"))
         return msgs
     def downFi(param,msgs,addr):
         file = param.decode().replace("/","")
         sectorDict = lib.disassembleFile(file)
         for i in sectorDict.keys():
-            msgs.append(b"meowtp partFi "+i.to_bytes(6, "big")+b" "+sectorDict[i])
-        msgs.append(b"meowtp finish "+len(sectorDict.keys()).to_bytes(6, "big")) #TODO: send a hash?
+            msgs.append(b"partFi"+i.to_bytes(6, "big")+b" "+sectorDict[i])
+        msgs.append(b"finish"+len(sectorDict.keys()).to_bytes(6, "big")) #TODO: send a hash?
         print("served "+file+" to "+addr[0])
         return msgs
     
@@ -94,7 +95,7 @@ class commands:
     
     def other(msgs, req):
         print("unknown cmd: "+str(req))
-        msgs.append(b"meowtp ready! ")
+        msgs.append(b"ready!")
         return msgs
 
 
