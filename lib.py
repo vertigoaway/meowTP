@@ -10,7 +10,7 @@ udpPort = 6969 #meowtp port!
 maxSectorSize = m.floor(crypto.keySize/8) - 2*m.ceil(256/8) - 20
 
 
-getNonce = lambda msg: msg[0:4]
+getNonce = lambda msg: int.from_bytes(msg[0:4], 'big')
 
 getParams = lambda msg: msg[10:]
 
@@ -27,7 +27,6 @@ def parseRawPkts(rawPkts, encrypted=False, privKey=None):
         params = getParams(rawPkt)
         pkts[i] = [nonce,req,params]
         i+=1
-    print(pkts)
     return pkts
     
     
