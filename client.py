@@ -52,8 +52,9 @@ class CliMtpProto:
         srvPubKey = self.srvPubKey
         file = self.file 
         msgs = self.msgs 
+        nonce = self.nonce 
         pktNonce,req,param = lib.parseRawPkts([data], encrypted=encrypt, privKey=self.privKey)[0]
-        if pktNonce!=self.nonce:
+        if pktNonce!=nonce:
             print("reported nonce different than current nonce, somethings out of order :(")
         match req:
             ### key exchange ###
@@ -92,10 +93,10 @@ class CliMtpProto:
         
 
         if len(msgs) != 0:
-            self.nonce = lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey,nonce=self.nonce)
+            nonce = lib.sendMessages(self,srv, msgs, encrypt=encrypt, publicKey=srvPubKey,nonce=nonce)
         else:
             if file["expectingFile"] == False:
-                self.nonce = lib.sendMessages(self,srv, [b"ready!"], encrypt=encrypt,publicKey=srvPubKey,nonce=self.nonce)
+                nonce = lib.sendMessages(self,srv, [b"ready!"], encrypt=encrypt,publicKey=srvPubKey,nonce=nonce)
             else:
                 pass
         if skimp: #lazy? yeah lol
@@ -106,6 +107,7 @@ class CliMtpProto:
         self.skimp = skimp
         self.srvPubKey = srvPubKey
         self.file = file
+        self.nonce = nonce
         self.msgs = []
     def error_received(self, exc):
         print('Error received:', exc)
