@@ -16,7 +16,7 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
             if keyChain[addr[0]]["encrypt"]:
                 pass
         except KeyError:
-            keyChain[addr[0]] = {"encrypt":False, "clientPK":None, "nonce":0}  # new ip! disable encryption
+            keyChain[addr[0]] = {"encrypt":False, "clientPK":None, "nonce":1}  # new ip! disable encryption
 
         pktNonce,req,param = lib.parseRawPkts([data], encrypted=keyChain[addr[0]]["encrypt"], privKey=privKey)[0]
         data = None
@@ -26,10 +26,10 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         # call the handler correctly
         req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
 
-        keyChain[addr[0]]["nonce"] = lib.sendMessages(self, addr, msgs,
+        tmp = lib.sendMessages(self, addr, msgs,
                    encrypt=keyChain[addr[0]]["encrypt"],
                    publicKey=keyChain[addr[0]]["clientPK"],nonce=keyChain[addr[0]]["nonce"])
-
+        keyChain[addr[0]]["nonce"] = tmp
 
 
 def call(req, param, addr, msgs, keyChain):
@@ -64,7 +64,7 @@ class commands:
         keyChain[addr[0]] = {
                         "clientPK":crypto.recvPubkey(param),
                         "encrypt":False,
-                        "nonce":0}
+                        "nonce":1}
         msgs.append(b"reqKey"+pem)
         return param,msgs,keyChain
     def finKey(keyChain,addr,msgs):
