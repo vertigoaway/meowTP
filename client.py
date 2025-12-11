@@ -54,8 +54,6 @@ class CliMtpProto:
         msgs = self.msgs 
         nonce = self.nonce 
         pktNonce,req,param = lib.parseRawPkts([data], encrypted=encrypt, privKey=self.privKey)[0]
-        if pktNonce!=nonce:
-            print("reported nonce different than current nonce, somethings out of order :(")
         match req:
             ### key exchange ###
             case b"reqKey":# we recieve server key and get requested for client key
@@ -69,18 +67,23 @@ class CliMtpProto:
                 msgs,file = interface(msgs)
             case b"sizeOf":
                 if file["expectingFile"]:
-                    file["size"] = int.from_bytes(param,'big',signed=False)
+                    file["size"] = int.from_bytes(param,'big')
                 return
             case b"partFi": #download a "sector" of file
                 if file["expectingFile"]:
                     sectNo = int.from_bytes(param[0:6],"big")
                     contents = param[7:]
                     file["sectors"][sectNo] = contents
+
             case b"finish":
                 if file["expectingFile"] and len(file["sectors"])>=int.from_bytes(param[0:6],"big"):
 
                     lib.assembleFile(file["sectors"],file["name"])
                     file = {"expectingFile":False}
+                else:
+                    required = range(0,file['size'])
+                    for i in file['sectors'].keys():
+                        required.pop(i)
             case b"err400": #exception
                 if file["expectingFile"]:
                     print("400: doesn't exist / you are not authorized")
