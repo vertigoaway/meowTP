@@ -10,7 +10,7 @@ udpPort = 6969 #meowtp port!
 maxSectorSize = m.floor(crypto.keySize/8) - 2*m.ceil(256/8) - 20
 
 
-getNonce = lambda msg: msg[0:3]
+getNonce = lambda msg: msg[0:4]
 
 getParams = lambda msg: msg[10:]
 
