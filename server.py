@@ -22,9 +22,9 @@ class MyDatagramProtocol(asyncio.DatagramProtocol):
         data = None
 
         msgs = []
-        print(f"Packet from {addr}: {req}")
+        print(f"Packet from {addr} {pktNonce}:{req}")
         # call the handler correctly
-        req, param, msgs, keyChain = call(req, param, addr, msgs, keyChain)
+        msgs, keyChain = call(req, param, addr, msgs, keyChain)
 
         tmp = lib.sendMessages(self, addr, msgs,
                    encrypt=keyChain[addr[0]]["encrypt"],
@@ -36,7 +36,7 @@ def call(req, param, addr, msgs, keyChain):
     match req:
         ### key exchange ###
         case b"reqKey":
-            param,msgs,keyChain = commands.reqKey(addr,param,msgs,keyChain)
+            msgs,keyChain = commands.reqKey(addr,param,msgs,keyChain)
 
         case b"finKey":
             keyChain, msgs = commands.finKey(keyChain,addr,msgs)
@@ -53,29 +53,37 @@ def call(req, param, addr, msgs, keyChain):
 
         case b"stpNow":
             commands.stpNow(addr)
+        case b"getPrt":
+            msgs = commands.getPrt(msgs,param)
 
         case _:
             msgs = commands.other(msgs,req)
-    return req, param, msgs, keyChain
+    return msgs, keyChain
 
 
 class commands:
-    def reqKey(addr,param,msgs,keyChain):
+    def reqKey(addr,param,msgs,keyChain):#recieve then send pubkeys
         keyChain[addr[0]] = {
                         "clientPK":crypto.recvPubkey(param),
                         "encrypt":False,
                         "nonce":1}
         msgs.append(b"reqKey"+pem)
-        return param,msgs,keyChain
-    def finKey(keyChain,addr,msgs):
+        return msgs,keyChain
+    def finKey(keyChain,addr,msgs):#begin encrypting
         keyChain[addr[0]]["encrypt"] = True
         msgs.append(b"ready!")
         return keyChain, msgs
-    def sizeOf(msgs, param):
+    def getPrt(msgs, param):#get one part of a file
+        file = param[0:25].decode().replace("..","")
+        partNo = int.from_bytes(param[25:],'big')
+        sector = lib.readSector(fileName=file,sector=partNo)
+        msgs.append(b"partFi"+partNo.to_bytes(6,'big')+b" "+sector)
+        return msgs
+    def sizeOf(msgs, param):#get size of file
         size = lib.fileSectSize(param.decode('utf-8'))
         msgs.append(b"sizeOf"+size.to_bytes(6,"big"))
         return msgs
-    def downFi(param,msgs,addr):
+    def downFi(param,msgs,addr):#get all parts of a file
         file = param.decode().replace("/","")
         sectorDict = lib.disassembleFile(file)
         for i in sectorDict.keys():
@@ -84,16 +92,16 @@ class commands:
         print("served "+file+" to "+addr[0])
         return msgs
     
-    def upldFi(param,msgs):
+    def upldFi(param,msgs):#begin recieving a file upload
         pass
 
-    def stpNow(addr):
+    def stpNow(addr):#stop and reset connection
         print("client "+addr[0]+" disconnected")
         keyChain[addr[0]]["encrypt"] = False
         keyChain[addr[0]]["clientPK"] = None
         return keyChain
     
-    def other(msgs, req):
+    def other(msgs, req): #unknown req recieved
         print("unknown cmd: "+str(req))
         msgs.append(b"ready!")
         return msgs
