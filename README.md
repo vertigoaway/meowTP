@@ -19,17 +19,17 @@ objectives
   - 🟨 very few security flaws in encryption implementation 
     - ✅ packet RSA encryption
     - ❌ quantum proof algorithms
-    - ❌ AES-GCM file encryption
+    - ❌ AES-GCM over RSA
     - ❌ ED25519
     - ❌ persistent keys (?)
-    - 🟨 add user authentication
+    - ❌ add user authentication
     - ❌ MiTM proof
-      - ❌ Nonces
+      - 🟨 Nonces
     - ❌ mitigate spoofing
     - 🟨 proper exception handling
   - 🟨 server can handle multiple clients
   - ✅ server can send packets in bulk
-  - 🟨 server can recieve packets in bulk
+  - ✅ server can recieve packets in bulk
   - ✅ client can send packets in bulk
   - ✅ client can recieve packets in bulk
   - ✅ client can download files from server
@@ -40,16 +40,16 @@ objectives
     - ✅ download <= 10MB with little/no corruption
     - ❌ download <= 1GB with little/no corruption
     - ✅ speed is above 2MB/s (~6MB/s)
-  - 🔨 client can upload files to server
+  - ❌ client can upload files to server
   - 🟨 client has rudimentary cli interface
   - 🔨 actually use OOP
   - 🟨🔨 perhaps make decent code
   - 🔨 stop fucking using magic numbers
   - ✅ no more byte<->string fuckery :(
-  - 🔨 remove as much packet bloat as possible
-  - 🟨 refactor server to use async (?)
-  - ❌ refactor client to use async (?)
-  - ❌ detect and correct packet loss
+  - 🟨 remove as much packet bloat as possible
+  - ✅ refactor server to use async (?)
+  - ✅ refactor client to use async (?)
+  - 🟨🔨 detect and correct packet loss
   - ❌ compress files
   - ❌ negotiate packet size
   - 🔨 annotate code
