@@ -76,14 +76,17 @@ class CliMtpProto:
                     file["sectors"][sectNo] = contents
 
             case b"finish":
-                if file["expectingFile"] and len(file["sectors"])>=int.from_bytes(param[0:6],"big"):
+                file['size'] = int.from_bytes(param[0:6],'big')
+                if file["expectingFile"] and len(file["sectors"])>=file['size']:
 
-                    lib.assembleFile(file["sectors"],file["name"])
+                    lib.assembleFile(file["sectors"],file["name"],file['size'])
                     file = {"expectingFile":False}
-                else:
-                    required = range(0,file['size'])
-                    for i in file['sectors'].keys():
-                        required.pop(i)
+                else:#we are NOT finished gang
+                    required = [x for x in range(0,file['size']) if x not in file['sectors'].keys()]
+                    #for i in file['sectors'].keys():
+                    #    del required[i]
+                    for i in required:
+                        msgs.append(b"getPrt"+bytes(file["name"],'utf-8')+(b'\x00'*(25-len(file["name"])))+i.to_bytes(6,'big'))
             case b"err400": #exception
                 if file["expectingFile"]:
                     print("400: doesn't exist / you are not authorized")
