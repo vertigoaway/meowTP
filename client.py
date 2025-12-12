@@ -29,6 +29,46 @@ def interface(msgs):
         
     return msgs,file
 
+class commands:
+    def __init__():
+        pass
+
+    def call(pkt,msgs,nonce,file):
+        req = pkt[1]
+        param = pkt[2]
+        pktNonce = pkt[0]
+        match req:
+            case b"reqKey":
+                msgs = commands.reqKey()    
+            case b"finKey":
+                msgs = commands.finKey()
+            case b"ready!":
+                commands.ready()
+            case b"sizeOf":
+                commands.sizeOf()
+            case b"partFi":
+                commands.partFi()
+            case b"finish":
+                commands.finish()
+            case b"err400":
+                commands.err400()
+            case _:
+                print("invalid cmd recvd",str(req))
+                return 
+    def reqKey():
+        return
+    def finKey():
+        return
+    def ready():
+        return 
+    def sizeOf():
+        return
+    def partFi():
+        return
+    def finish():
+        return
+    def err400():
+        return
 
 
 #begin connection
@@ -120,6 +160,9 @@ class CliMtpProto:
 
     def connection_lost(self, exc):
         print("Connection lost D:")
+
+
+
 
 
 
