@@ -74,7 +74,7 @@ class commands:
         msgs.append(b"ready!")
         return keyChain, msgs
     def getPrt(msgs, param):#get one part of a file
-        file = param[0:25].decode().replace("..","")
+        file = param[0:25].decode().replace("..","").strip().replace('\x00','')
         partNo = int.from_bytes(param[25:],'big')
         sector = lib.readSector(fileName=file,sector=partNo)
         msgs.append(b"partFi"+partNo.to_bytes(6,'big')+b" "+sector)
