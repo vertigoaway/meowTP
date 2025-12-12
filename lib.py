@@ -46,14 +46,14 @@ def sendMessages(sock, client_address, msgs, encrypt=False, publicKey=None,nonce
     return nonce
 
 def fileSectSize(fileName):
-    size = math.ceil(os.path.getsize("./serving/"+fileName)/maxSectorSize)
+    size = math.ceil(os.path.getsize("./serving/"+fileName.strip())/maxSectorSize)
     return size
 
 
 def readSector(fileName, sector):
     size = fileSectSize(fileName)
     file = open("./serving/"+fileName,"rb")
-    file.seek(0,int(maxSectorSize*sector))
+    file.seek(int(maxSectorSize*sector),0)
     contents = file.read(maxSectorSize)
     file.close()
     return contents
@@ -80,7 +80,7 @@ def assembleFile(sectors, fileName, size=None):
         file.write(b'\x00'*size*maxSectorSize) #preall file
 
         for i in sectors.keys():
-            file.seek(0,i*maxSectorSize)
+            file.seek(i*maxSectorSize,0)
             file.write(sectors[i])
     
     else:#old dumb assemble
