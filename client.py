@@ -32,44 +32,69 @@ def interface(msgs):
 class commands:
     def __init__():
         pass
-
-    def call(pkt,msgs,nonce,file):
+    def reqKey(msgs,param):
+        srvPubKey = crypto.recvPubkey(param)
+        srvPubKey = srvPubKey
+        skimp = True
+        msgs.append(b"finKey")
+        return msgs,srvPubKey,skimp
+    def finKey(msgs):
+        print("key exchange completed")
+        msgs.append(b"ready!")
+        return msgs
+    def ready(msgs):
+        msgs,file = interface(msgs)
+        return msgs,file
+    def sizeOf(file,param):
+        if file["expectingFile"]:
+            file["size"] = int.from_bytes(param,'big')
+            
+        return file,param
+    def partFi(file,param):
+        if file["expectingFile"]:
+            sectNo = int.from_bytes(param[0:6],"big")
+            contents = param[7:]
+            file["sectors"][sectNo] = contents
+        return file 
+    def finish(file,param,msgs):
+        file['size'] = int.from_bytes(param[0:6],'big')
+        if file["expectingFile"] and len(file["sectors"])>=file['size']:
+            lib.assembleFile(file["sectors"],file["name"],file['size'])
+            file = {"expectingFile":False}
+        else:#we are NOT finished gang
+            required = [x for x in range(0,file['size']) if x not in file['sectors'].keys()]
+            #for i in file['sectors'].keys():
+            #    del required[i]
+            for i in required:
+                msgs.append(b"getPrt"+bytes(file["name"],'utf-8')+(b'\x00'*(25-len(file["name"])))+i.to_bytes(6,'big'))
+        return file, msgs
+    def err400(file,msgs):
+        if file["expectingFile"]:
+            print("400: doesn't exist / you are not authorized")
+        return 
+    def call(pkt,msgs,file,enc,srvPubKey):
         req = pkt[1]
         param = pkt[2]
         pktNonce = pkt[0]
         match req:
             case b"reqKey":
-                msgs = commands.reqKey()    
+                msgs,enc,srvPubKey = commands.reqKey(msgs,param)    
             case b"finKey":
-                msgs = commands.finKey()
+                msgs,enc = commands.finKey(msgs)
             case b"ready!":
-                commands.ready()
+                msgs = commands.ready(msgs)
             case b"sizeOf":
-                commands.sizeOf()
+                msgs, file = commands.sizeOf(file,param)
             case b"partFi":
-                commands.partFi()
+                file = commands.partFi(file,param)
             case b"finish":
-                commands.finish()
+                file, msgs = commands.finish(file,param,msgs)
             case b"err400":
-                commands.err400()
+                commands.err400(file,msgs)
             case _:
                 print("invalid cmd recvd",str(req))
-                return 
-    def reqKey():
-        return
-    def finKey():
-        return
-    def ready():
-        return 
-    def sizeOf():
-        return
-    def partFi():
-        return
-    def finish():
-        return
-    def err400():
-        return
-
+        return msgs,file,enc,srvPubKey
+    
 
 #begin connection
 class CliMtpProto:
@@ -93,49 +118,9 @@ class CliMtpProto:
         file = self.file 
         msgs = self.msgs 
         nonce = self.nonce 
-        pktNonce,req,param = lib.parseRawPkts([data], encrypted=encrypt, privKey=self.privKey)[0]
-        match req:
-            ### key exchange ###
-            case b"reqKey":# we recieve server key and get requested for client key
-                skimp = True
-                srvPubKey = crypto.recvPubkey(param)
-                msgs.append(b"finKey")
-            case b"finKey":#ensure both can read messages
-                print("key exchange completed")
-                msgs.append(b"ready!")
-            case b"ready!": #idle
-                msgs,file = interface(msgs)
-            case b"sizeOf":
-                if file["expectingFile"]:
-                    file["size"] = int.from_bytes(param,'big')
-                return
-            case b"partFi": #download a "sector" of file
-                if file["expectingFile"]:
-                    sectNo = int.from_bytes(param[0:6],"big")
-                    contents = param[7:]
-                    file["sectors"][sectNo] = contents
-
-            case b"finish":
-                file['size'] = int.from_bytes(param[0:6],'big')
-                if file["expectingFile"] and len(file["sectors"])>=file['size']:
-
-                    lib.assembleFile(file["sectors"],file["name"],file['size'])
-                    file = {"expectingFile":False}
-                else:#we are NOT finished gang
-                    required = [x for x in range(0,file['size']) if x not in file['sectors'].keys()]
-                    #for i in file['sectors'].keys():
-                    #    del required[i]
-                    for i in required:
-                        msgs.append(b"getPrt"+bytes(file["name"],'utf-8')+(b'\x00'*(25-len(file["name"])))+i.to_bytes(6,'big'))
-            case b"err400": #exception
-                if file["expectingFile"]:
-                    print("400: doesn't exist / you are not authorized")
-                    file["expectingFile"] = {"expectingFile":False}
-                    interface(msgs)
-
-            case _:
-                print("invalid request recieved D:")
-                print(req)
+        pkt = lib.parseRawPkts([data], encrypted=encrypt, privKey=self.privKey)[0]
+        
+        msgs,file,skimp,srvPubKey = commands.call(pkt,msgs,file,skimp,srvPubKey)
         
 
         if len(msgs) != 0:
