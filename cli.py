@@ -29,7 +29,7 @@ class client:
         sendUnencryptedFrame(self.sock, req)
         received = recvUnencryptedFrame(self.sock)
         if received['status'] == 200:
-            return received['query']['v']
+            return received['result']['v']
         else:
             return received['status']
     
@@ -47,7 +47,7 @@ class client:
         received = recvUnencryptedFrame(self.sock)
 
         if received['status'] == 200:
-            return received['search']['k']
+            return received['result']['k']
         elif received['status'] == 400:
             raise TypeError
         else:
