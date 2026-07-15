@@ -1,6 +1,9 @@
 import socket
 from typing import Any, cast
 from netlib import recvUnencryptedFrame, sendUnencryptedFrame
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class client:
@@ -22,38 +25,37 @@ class client:
         key (Any): Key value of entry to query
 
         Returns:
-         out: Value corresponding to key or status code if failed. 
+         out: Value corresponding to key or status code if failed.
         """
-        req = {"cmd": "query",
-                "query":{'k':key}}
+        req = {"cmd": "query", "query": {"k": key}}
         sendUnencryptedFrame(self.sock, req)
         received = recvUnencryptedFrame(self.sock)
-        if received['status'] == 200:
-            return received['result']['v']
+        if received["status"] == 200:
+            return received["result"]["v"]
         else:
-            return received['status']
-    
-    def search(self,val: Any) -> Any | int:
+            return None
+
+    def search(self, val: Any) -> Any | int:
         """Find all keys containing val in server.
         Parameters:
         val (Any): Value to query
 
         Returns:
-         out: Keys corresponding to val or status code if failed. 
+         out: Keys corresponding to val or status code if failed.
         """
-        req = {"cmd": "query",
-                "query":{'v':val}}
-        sendUnencryptedFrame(self.sock,req)
+        req = {"cmd": "query", "query": {"v": val}}
+        sendUnencryptedFrame(self.sock, req)
         received = recvUnencryptedFrame(self.sock)
 
-        if received['status'] == 200:
-            return received['result']['k']
-        elif received['status'] == 400:
+        if received["status"] == 200:
+            return received["result"]["k"]
+        elif received["status"] == 400:
+            logger.error(f"invalid search parameters!: {val}")
             raise TypeError
         else:
-            return received['status']
+            return received["status"]
 
-    def post(self, key: Any, value: Any, replace : bool = False) -> bool: 
+    def post(self, key: Any, value: Any, replace: bool = False) -> bool:
         """Post K-V pair to server.
         Parameters:
             key (Any): Key value of new entry.
@@ -63,19 +65,17 @@ class client:
          Whether or not data was written.
         """
         if replace:
-            cmd : str = 'push'
+            cmd: str = "push"
         else:
-            cmd = 'post'
-        req = {"cmd": cmd, 
-               cmd: 
-                    {'k':key,
-                     'v':value}}
+            cmd = "post"
+        req = {"cmd": cmd, cmd: {"k": key, "v": value}}
         sendUnencryptedFrame(self.sock, req)
 
-        res = recvUnencryptedFrame(self.sock)['status']
+        res = recvUnencryptedFrame(self.sock)["status"]
         if res == 201:
             return True
         elif res is 400:
+            logger.error(f"invalid post parameters!: {req}")
             raise TypeError
         elif res is 304:
             return False
@@ -83,7 +83,8 @@ class client:
 
     def close(self) -> None:
         """Closes client socket."""
-        #resp = {"cmd": "quit"}
-        #sendUnencryptedFrame(self.sock, resp)
+        logger.info(f"socket close fired")
+        # resp = {"cmd": "quit"}
+        # sendUnencryptedFrame(self.sock, resp)
         self.sock.close()
         return
