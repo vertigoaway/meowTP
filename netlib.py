@@ -16,12 +16,37 @@ FRAME_LENGTH_INT_BYTES = 4  # 4 = 32 bits
 logger = logging.getLogger(__name__)
 
 
-def serializeBytes(data: bytes) -> str:
-    return base64.b64encode(data).decode(ENCODING)
+#def serializeBytes(data: bytes) -> str:
+#    return base64.b64encode(data).decode(ENCODING)
 
 
-def deserializeBytes(data: str) -> bytes:
-    return base64.b64decode(data)
+#def deserializeBytes(data: str) -> bytes:
+#    return base64.b64decode(data)
+
+
+def flagDecode(byte:bytes) -> list[bool]:
+    x = int.from_bytes(byte,ENDIAN)
+    decoded = [x & (1 << 0),
+               x & (1 << 1),
+               x & (1 << 2),
+               x & (1 << 3),
+               x & (1 << 4),
+               x & (1 << 5),
+               x & (1 << 6),
+               x & (1 << 7)]
+    return cast(list[bool],decoded)
+
+
+def flagEncode(options: list[bool]) -> int:
+    if len(options) == 8:
+        out = 0x00
+        for i,o in enumerate(options):
+            out |= o << i
+    else:
+        raise ValueError
+    return out
+
+
 
 
 # compress and decompress need a better name lol
@@ -34,11 +59,15 @@ def compress(data: dict, level: int = 9) -> tuple[bytes, int]:
     Returns (bytes):
      Compressed and packed bytes.
     """
-    flags = 0b00000000
+    opts = [False,False,False,False,False,False,False,False]
     packed = cast(bytes, msgP.dumps(data))
     if len(packed) >= MIN_COMPRESS_SIZE:
         logger.debug(f"{len(packed)} exceeds 128, compressing frame with Zstd")
-        flags |= 1 << 0
+        opts[0] = True
+    
+    flags = flagEncode(opts)
+
+    if opts[0]:
         packed = zstd.compress(packed, level)
 
     return (packed, flags)
@@ -48,6 +77,7 @@ def decompress(data: bytes, zstdEnabled: bool = True) -> dict:
     """un-Messagepack and Zstd decompress.
     Parameters:
         data (bytes): Packed and compresssed bytes.
+        zstdEnabled (bool): Enables or disables ZSTD decompression
 
     Returns (dict):
      Decompressed data.
@@ -79,9 +109,9 @@ def recvUnencryptedFrame(sock) -> dict[Any, Any]:
     if length > MAX_FRAME:
         logger.error(f"frame length {length}bytes sent exceeds {MAX_FRAME}!")
         raise ValueError("Frame too large!")
-    flags = int.from_bytes(recvExact(sock, FLAG_SIZE), ENDIAN)
+    flags = flagDecode(recvExact(sock, FLAG_SIZE))
     payl = recvExact(sock, length)
-    if flags & (1 << 0):  # compression enabled
+    if flags[0]:  # compression enabled
         res = decompress(payl, zstdEnabled=True)
     else:
         res = decompress(payl, zstdEnabled=False)
