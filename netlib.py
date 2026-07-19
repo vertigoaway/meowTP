@@ -26,19 +26,14 @@ logger = logging.getLogger(__name__)
 
 def flagDecode(byte:bytes) -> list[bool]:
     x = int.from_bytes(byte,ENDIAN)
-    decoded = [x & (1 << 0),
-               x & (1 << 1),
-               x & (1 << 2),
-               x & (1 << 3),
-               x & (1 << 4),
-               x & (1 << 5),
-               x & (1 << 6),
-               x & (1 << 7)]
+    decoded = []
+    for i in range(0,FLAG_SIZE*8):
+        decoded.append(x & (1 << i))
     return cast(list[bool],decoded)
 
 
 def flagEncode(options: list[bool]) -> int:
-    if len(options) == 8:
+    if len(options) == FLAG_SIZE*8:
         out = 0x00
         for i,o in enumerate(options):
             out |= o << i
@@ -59,7 +54,7 @@ def compress(data: dict, level: int = 9) -> tuple[bytes, int]:
     Returns (bytes):
      Compressed and packed bytes.
     """
-    opts = [False,False,False,False,False,False,False,False]
+    opts = [False,False,False,False,False,False,False,False]*FLAG_SIZE
     packed = cast(bytes, msgP.dumps(data))
     if len(packed) >= MIN_COMPRESS_SIZE:
         logger.debug(f"{len(packed)} exceeds 128, compressing frame with Zstd")
