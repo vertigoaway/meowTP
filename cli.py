@@ -1,60 +1,63 @@
-import socket
-from typing import Any, NoReturn, cast
-from netlib import recvUnencryptedFrame, sendUnencryptedFrame
 import logging
 from concurrent.futures import Future
 import threading
 import time
-from typing import Literal, overload
+from typing import Literal, overload, Any, cast
+import socket
+from netlib import recv_unencrypted_frame, send_unencrypted_frame
+
 logger = logging.getLogger(__name__)
+MAX_TIMEOUT = 1
 
 
-class client:
+class Client:
+    """MeowTP client object."""
 
-    srv : tuple[str,int]
-    sock : socket.socket
-    frameId : int
-    reqId : int
-    pending : dict[int,Future] = {}
-    def _nextId(self) -> int:
-        self.reqId+=1
-        return self.reqId
-    
+    srv: tuple[str, int]
+    sock: socket.socket
+    frameId: int
+    req_id: int
+    pending: dict[int, Future] = {}
+
+    def _next_id(self) -> int:
+        self.req_id += 1
+        return self.req_id
+
     @overload
-    def sendReq(self, request, responseExpected : Literal[True] = True) -> Future: ...
+    def send_req(self, request, response_expected: Literal[True] = True) -> Future:
+        ...
 
     @overload
-    def sendReq(self, request, responseExpected : Literal[False]) -> None: ...
+    def send_req(self, request, response_expected: Literal[False]) -> None:
+        ...
 
-    def sendReq(self, request,responseExpected=True) -> Future | None:
-        id = self._nextId()
-        request["id"] = id
-        if responseExpected:
-            future = Future()
-            self.pending[id] = future
+    def send_req(self, request, response_expected=True) -> Future | None:
+        cur_id = self._next_id()
+        request["id"] = cur_id
+        if response_expected:
+            future: Future | None = Future()
+            self.pending[cur_id] = cast(Future, future)
         else:
             future = None
-        sendUnencryptedFrame(self.sock,request)        
+        send_unencrypted_frame(self.sock, request)
         return future
-    
+
     def dispatch(self) -> None:
+        """Receiving thread"""
         while self.connected:
             try:
-                response = recvUnencryptedFrame(self.sock)
-            except OSError: #socket is closed
+                response = recv_unencrypted_frame(self.sock)
+            except OSError:  # socket is closed
                 continue
-            id = response["id"]
+            cur_id = response["id"]
 
-            future = self.pending.pop(id,None)
+            future = self.pending.pop(cur_id, None)
 
             if future is None:
-                logger.warning(
-                    "Recieved response for unknown request %d",
-                    id
-                )
+                logger.warning("Recieved response for unknown request %d", cur_id)
                 continue
             future.set_result(response)
-    
+
     def open(self, srv: tuple[str, int] | None = None):
         """Opens a socket connection to the server.
         Parameters:
@@ -66,9 +69,8 @@ class client:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(srv)  # pyright: ignore[reportArgumentType]
         self.connected = True
-        self.dispatchThread = threading.Thread(target=self.dispatch)
-        self.dispatchThread.start()
-        return
+        self.dispatch_thread = threading.Thread(target=self.dispatch)
+        self.dispatch_thread.start()
 
     def __init__(self, srv: tuple[str, int]):
         """Creates client object and opens a connection to the server.
@@ -76,8 +78,7 @@ class client:
          srv: Tuple containing hostname/ip and port number.
         """
         self.open(srv)
-        self.reqId = 1
-        return
+        self.req_id = 1
 
     def query(self, key: str):
         """Find V corressponding to key arg in server.
@@ -88,12 +89,11 @@ class client:
          out: Value corresponding to key or status code if failed.
         """
         req = {"cmd": "query", "query": {"k": key}}
-        received = self.sendReq(req)
-        received = received.result(timeout=5)
+        fut = self.send_req(req)
+        received: dict[str, Any] = fut.result(timeout=MAX_TIMEOUT)
         if received["status"] == 200:
             return received["result"]["v"]
-        else:
-            return None
+        return None
 
     def search(self, val: Any) -> Any | int:
         """Find all keys containing val in server.
@@ -104,16 +104,15 @@ class client:
          out: Keys corresponding to val or status code if failed.
         """
         req = {"cmd": "query", "query": {"v": val}}
-        received = self.sendReq(req)
-        received = received.result(timeout=5)
+        fut = self.send_req(req)
+        received: dict[str, Any] = fut.result(timeout=MAX_TIMEOUT)
 
         if received["status"] == 200:
             return received["result"]["k"]
-        elif received["status"] == 400:
-            logger.error(f"invalid search parameters!: {val}")
+        if received["status"] == 400:
+            logger.error("invalid search parameters!: %s", val)
             raise TypeError
-        else:
-            return received["status"]
+        return received["status"]
 
     def post(self, key: Any, value: Any, replace: bool = False) -> bool:
         """Post K-V pair to server.
@@ -129,31 +128,44 @@ class client:
         else:
             cmd = "post"
         req = {"cmd": cmd, cmd: {"k": key, "v": value}}
-        res = self.sendReq(req)
+        res = self.send_req(req)
         res = res.result(timeout=5)
         if res == 201:
             return True
-        elif res == 400:
-            logger.error(f"invalid post parameters!: {req}")
+        if res == 400:
+            logger.error("invalid post parameters!: %s", req)
             raise TypeError
-        elif res == 304:
+        if res == 304:
             return False
         return False
-    
-    def exists(self,key: Any) -> bool:
 
-        req = {"cmd":"exists","exists":{'k':key}}
-        res = self.sendReq(req)
-        res = res.result(timeout=5)
+    def exists(self, key: Any) -> bool:
+        """Check for the existence of an entry.
+
+        Parameters:
+         key (Any): Entry to check for existence.
+
+        Returns (bool):
+         Whether or not an entry is defined with key var."""
+        req = {"cmd": "exists", "exists": {"k": key}}
+        fut = self.send_req(req)
+        res: dict[str, Any] = fut.result(timeout=MAX_TIMEOUT)
         exist = res["result"]["exists"]
         return exist
 
-    def delete(self,key: Any) -> bool:
+    def delete(self, key: Any) -> bool:
+        """Delete entry specified with key.
 
-        req = {"cmd":"del","del":{'k':key}}
+        Parameters:
+            key (Any): Entry to delete.
 
-        res = self.sendReq(req)
-        res = res.result(timeout=5)
+        Returns (bool):
+         Whether or not an entry was deleted.
+        """
+        req = {"cmd": "del", "del": {"k": key}}
+
+        fut = self.send_req(req)
+        res: dict[str, Any] = fut.result(timeout=MAX_TIMEOUT)
 
         deleted = res["result"]["deleted"]
         return deleted
@@ -161,24 +173,26 @@ class client:
     def ping(self) -> float:
         """Pings server.
 
-        Returns (float): 
+        Returns (float):
          Difference between function call and first packet arrival on server side."""
         begin = time.time()
-        req = {'cmd':'ping','ping': {'time':begin}}
-        res = self.sendReq(req)
-        res = res.result(timeout=5)['result']
-        end = res['time']
-        delta = res['delta']
+        req = {"cmd": "ping", "ping": {"time": begin}}
+        fut = self.send_req(req)
+        res: dict[str, Any] = fut.result(timeout=MAX_TIMEOUT)["result"]
+        end = res["time"]
+        delta = res["delta"]
         change = end - begin
         if change != delta:
-            logger.critical(f'C->S ping delta mismatch! calculated: {change} received {delta}')
-        logger.info(f'C->S ping: {change*1000}ms')
+            logger.critical(
+                "C->S ping delta mismatch! calculated: %s received %s", change, delta
+            )
+        logger.info("C->S ping: %sms", change * 1000)
         return change
+
     def close(self) -> None:
         """Closes client socket."""
-        logger.info(f"socket close fired")
+        logger.info("socket close fired")
         # resp = {"cmd": "quit"}
         # sendUnencryptedFrame(self.sock, resp)
         self.connected = False
         self.sock.close()
-        return

@@ -1,12 +1,12 @@
-import compression.zstd as zstd
-import base64
-from typing import Any
-from typing import cast
-import msgpack as msgP
 import logging
+from typing import Any, Literal
+from typing import cast
+import base64
+import compression.zstd as zstd
+import msgpack as msgP
 
 ENCODING = "utf8"
-ENDIAN = "big"
+ENDIAN: Literal["big", "little"] = "big"
 MAX_FRAME = 64 * 1024 * 1024
 MIN_COMPRESS_SIZE = 128
 FLAG_SIZE = 1  # 1 = 8 bits
@@ -15,32 +15,32 @@ FRAME_LENGTH_INT_BYTES = 4  # 4 = 32 bits
 logger = logging.getLogger(__name__)
 
 
-#def serializeBytes(data: bytes) -> str:
+# def serializeBytes(data: bytes) -> str:
 #    return base64.b64encode(data).decode(ENCODING)
 
 
-#def deserializeBytes(data: str) -> bytes:
+# def deserializeBytes(data: str) -> bytes:
 #    return base64.b64decode(data)
 
 
-def flagDecode(byte:bytes) -> list[bool]:
-    x = int.from_bytes(byte,ENDIAN)
+def flag_decode(byte: bytes) -> list[bool]:
+    """Converts byte flag into list of bools representing each bit."""
+    x = int.from_bytes(byte, ENDIAN)
     decoded = []
-    for i in range(0,FLAG_SIZE*8):
+    for i in range(0, FLAG_SIZE * 8):
         decoded.append(x & (1 << i))
-    return cast(list[bool],decoded)
+    return cast(list[bool], decoded)
 
 
-def flagEncode(options: list[bool]) -> int:
-    if len(options) == FLAG_SIZE*8:
+def flag_encode(options: list[bool]) -> int:
+    """Converts list of bools representing each bit into byte flag."""
+    if len(options) == FLAG_SIZE * 8:
         out = 0x00
-        for i,o in enumerate(options):
+        for i, o in enumerate(options):
             out |= o << i
     else:
         raise ValueError
     return out
-
-
 
 
 # compress and decompress need a better name lol
@@ -53,13 +53,13 @@ def compress(data: dict, level: int = 9) -> tuple[bytes, int]:
     Returns (bytes):
      Compressed and packed bytes.
     """
-    opts = [False,False,False,False,False,False,False,False]*FLAG_SIZE
+    opts = [False, False, False, False, False, False, False, False] * FLAG_SIZE
     packed = cast(bytes, msgP.dumps(data))
     if len(packed) >= MIN_COMPRESS_SIZE:
-        logger.debug(f"{len(packed)} exceeds 128, compressing frame with Zstd")
+        logger.debug("%s exceeds 128, compressing frame with Zstd", len(packed))
         opts[0] = True
-    
-    flags = flagEncode(opts)
+
+    flags = flag_encode(opts)
 
     if opts[0]:
         packed = zstd.compress(packed, level)
@@ -67,7 +67,7 @@ def compress(data: dict, level: int = 9) -> tuple[bytes, int]:
     return (packed, flags)
 
 
-def decompress(data: bytes, zstdEnabled: bool = True) -> dict:
+def decompress(data: bytes, zstd_enabled: bool = True) -> dict:
     """un-Messagepack and Zstd decompress.
     Parameters:
         data (bytes): Packed and compresssed bytes.
@@ -76,18 +76,23 @@ def decompress(data: bytes, zstdEnabled: bool = True) -> dict:
     Returns (dict):
      Decompressed data.
     """
-    if zstdEnabled:
-        decompressedData = zstd.decompress(data)
+    if zstd_enabled:
+        decompressed_data = zstd.decompress(data)
         logger.debug(
-            f" compressed: {len(data)} | decompressed: {len(decompressedData)}"
+            " compressed: %s | decompressed: %s", len(data), len(decompressed_data)
         )
     else:
-        decompressedData = data
-    unpackedData = cast(dict, msgP.loads(decompressedData))
-    return unpackedData
+        decompressed_data = data
+    unpacked_data = cast(dict, msgP.loads(decompressed_data))
+    return unpacked_data
 
 
-def recvExact(sock, n) -> bytes:
+def recv_exact(sock, n) -> bytes:
+    """Recieves exact number of bytes specified.
+
+    Parameters:
+        sock: Socket to receive from.
+        n: Number of bytes to receive."""
     data = bytearray()
     while len(data) < n:
         chunk = sock.recv(n - len(data))
@@ -97,23 +102,23 @@ def recvExact(sock, n) -> bytes:
     return bytes(data)
 
 
-def recvUnencryptedFrame(sock) -> dict[Any, Any]:
-    length = int.from_bytes(recvExact(sock, FRAME_LENGTH_INT_BYTES), ENDIAN)
+def recv_unencrypted_frame(sock) -> dict[Any, Any]:
+    length = int.from_bytes(recv_exact(sock, FRAME_LENGTH_INT_BYTES), ENDIAN)
 
     if length > MAX_FRAME:
-        logger.error(f"frame length {length}bytes sent exceeds {MAX_FRAME}!")
+        logger.error("frame length %sbytes sent exceeds %s!", length, MAX_FRAME)
         raise ValueError("Frame too large!")
-    flags = flagDecode(recvExact(sock, FLAG_SIZE))
-    payl = recvExact(sock, length)
+    flags = flag_decode(recv_exact(sock, FLAG_SIZE))
+    payl = recv_exact(sock, length)
     if flags[0]:  # compression enabled
-        res = decompress(payl, zstdEnabled=True)
+        res = decompress(payl, zstd_enabled=True)
     else:
-        res = decompress(payl, zstdEnabled=False)
+        res = decompress(payl, zstd_enabled=False)
     return res
 
 
-def sendUnencryptedFrame(sock, payload) -> None:
-    logger.debug(f"sending frame with payload: {payload}")
+def send_unencrypted_frame(sock, payload) -> None:
+    logger.debug("sending frame with payload: %s", payload)
     frame, flags = compress(payload)
     sock.sendmsg(
         [
