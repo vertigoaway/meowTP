@@ -37,8 +37,8 @@ class client:
         sendUnencryptedFrame(self.sock,request)        
         return future
     
-    def dispatch(self) -> NoReturn:
-        while True:
+    def dispatch(self) -> None:
+        while self.connected:
             response = recvUnencryptedFrame(self.sock)
             id = response["id"]
 
@@ -62,6 +62,7 @@ class client:
         self.srv = srv
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(srv)  # pyright: ignore[reportArgumentType]
+        self.connected = True
         self.dispatchThread = threading.Thread(target=self.dispatch)
         self.dispatchThread.start()
         return
@@ -135,6 +136,25 @@ class client:
         elif res == 304:
             return False
         return False
+    
+    def exists(self,key: Any) -> bool:
+
+        req = {"cmd":"exists","exists":{'k':key}}
+        res = self.sendReq(req)
+        res = res.result(timeout=5)
+        exist = res["result"]["exists"]
+        return exist
+
+    def delete(self,key: Any) -> bool:
+
+        req = {"cmd":"del","del":{'k':key}}
+
+        res = self.sendReq(req)
+        res = res.result(timeout=5)
+
+        deleted = res["result"]["deleted"]
+        return deleted
+
     def ping(self) -> float:
         """Pings server.
 
@@ -156,5 +176,6 @@ class client:
         logger.info(f"socket close fired")
         # resp = {"cmd": "quit"}
         # sendUnencryptedFrame(self.sock, resp)
+        self.connected = False
         self.sock.close()
         return

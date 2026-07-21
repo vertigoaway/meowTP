@@ -103,7 +103,19 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             exist = False
         
         return 200, {"exists": exist}
-
+    
+    def delete(self,data: dict) -> tuple[int,dict[str,Any]]:
+        toDel = data.get('k')
+        if toDel is None:
+            return 400, {}
+        with ThreadedTCPServer.dbLock:
+            x = ThreadedTCPServer.db.get(toDel)
+            if x is not None:
+                ThreadedTCPServer.db.__delitem__(toDel)
+                deleted = True
+            else:
+                deleted = False
+        return 200,{'deleted':deleted}
     def unk(self, data) -> tuple[int, dict[Any, Any]]:
         return 400, {}
     
@@ -113,6 +125,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         "push": push,
         "ping": ping,
         "exists": exists,
+        "del": delete,
         None: unk,
     }
 
