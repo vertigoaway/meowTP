@@ -24,32 +24,32 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         key = data.get("k")
 
         if key is not None:
-            val = self.queryKey(key)
+            val = self._queryKey(key)
             if val is None:
                 return 404, {}
 
         else:
 
             val = data.get("v")
-            key = self.queryVal(val)
+            key = self._queryVal(val)
 
         resp = {"k": key, "v": val}
         print(f"\tresp: {resp}")
         return 200, resp
 
-    def queryKey(self, key: str | int) -> Any | None:
+    def _queryKey(self, key: str | int) -> Any | None:
         val = None
         with ThreadedTCPServer.dbLock:
             val = ThreadedTCPServer.db.get(key)
         return val
 
-    def queryVal(self, val: Any):
+    def _queryVal(self, val: Any):
         key = []
         with ThreadedTCPServer.dbLock:
             raise NotImplementedError
         raise NotImplementedError
 
-    def write(self, key, val, replace=True) -> bool:
+    def _write(self, key, val, replace=True) -> bool:
         with ThreadedTCPServer.dbLock:
             v = ThreadedTCPServer.db.get(key)
             if v is None:
@@ -66,7 +66,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         if k is None or v is None:
             return 400, {}
 
-        done = self.write(k, v, replace=False)
+        done = self._write(k, v, replace=False)
         if done:
             return 201, {}
         else:
@@ -78,7 +78,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         if k is None or v is None:
             return 400, {}
 
-        done = self.write(k, v, replace=True)
+        done = self._write(k, v, replace=True)
         if done:
             return 201, {}
         else:
