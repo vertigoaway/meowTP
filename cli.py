@@ -39,7 +39,10 @@ class client:
     
     def dispatch(self) -> None:
         while self.connected:
-            response = recvUnencryptedFrame(self.sock)
+            try:
+                response = recvUnencryptedFrame(self.sock)
+            except OSError: #socket is closed
+                continue
             id = response["id"]
 
             future = self.pending.pop(id,None)
