@@ -1,8 +1,11 @@
 import socket
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 from netlib import recvUnencryptedFrame, sendUnencryptedFrame
 import logging
+from concurrent.futures import Future
+import threading
 import time
+from typing import Literal, overload
 logger = logging.getLogger(__name__)
 
 
@@ -12,6 +15,43 @@ class client:
     sock : socket.socket
     frameId : int
     reqId : int
+    pending : dict[int,Future] = {}
+    def _nextId(self) -> int:
+        self.reqId+=1
+        return self.reqId
+    
+    @overload
+    def sendReq(self, request, responseExpected : Literal[True] = True) -> Future: ...
+
+    @overload
+    def sendReq(self, request, responseExpected : Literal[False]) -> None: ...
+
+    def sendReq(self, request,responseExpected=True) -> Future | None:
+        id = self._nextId()
+        request["id"] = id
+        if responseExpected:
+            future = Future()
+            self.pending[id] = future
+        else:
+            future = None
+        sendUnencryptedFrame(self.sock,request)        
+        return future
+    
+    def dispatch(self) -> NoReturn:
+        while True:
+            response = recvUnencryptedFrame(self.sock)
+            id = response["id"]
+
+            future = self.pending.pop(id,None)
+
+            if future is None:
+                logger.warning(
+                    "Recieved response for unknown request %d",
+                    id
+                )
+                continue
+            future.set_result(response)
+    
     def open(self, srv: tuple[str, int] | None = None):
         """Opens a socket connection to the server.
         Parameters:
@@ -22,6 +62,8 @@ class client:
         self.srv = srv
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect(srv)  # pyright: ignore[reportArgumentType]
+        self.dispatchThread = threading.Thread(target=self.dispatch)
+        self.dispatchThread.start()
         return
 
     def __init__(self, srv: tuple[str, int]):
@@ -32,17 +74,6 @@ class client:
         self.open(srv)
         self.reqId = 1
         return
-    
-    def sendReq(self,req,responseExpected=True) -> dict[Any, Any]:
-        req["id"] = self.reqId
-        sendUnencryptedFrame(self.sock,req)
-        self.reqId += 1
-        if responseExpected:
-            resp = recvUnencryptedFrame(self.sock)
-        else:
-            return {} # for the sake of my sanity
-
-        return resp
 
     def query(self, key: str):
         """Find V corressponding to key arg in server.
@@ -54,6 +85,7 @@ class client:
         """
         req = {"cmd": "query", "query": {"k": key}}
         received = self.sendReq(req)
+        received = received.result(timeout=5)
         if received["status"] == 200:
             return received["result"]["v"]
         else:
@@ -69,6 +101,7 @@ class client:
         """
         req = {"cmd": "query", "query": {"v": val}}
         received = self.sendReq(req)
+        received = received.result(timeout=5)
 
         if received["status"] == 200:
             return received["result"]["k"]
@@ -92,7 +125,8 @@ class client:
         else:
             cmd = "post"
         req = {"cmd": cmd, cmd: {"k": key, "v": value}}
-        res = self.sendReq(req)["status"]
+        res = self.sendReq(req)
+        res = res.result(timeout=5)
         if res == 201:
             return True
         elif res == 400:
@@ -108,7 +142,8 @@ class client:
          Difference between function call and first packet arrival on server side."""
         begin = time.time()
         req = {'cmd':'ping','ping': {'time':begin}}
-        res = self.sendReq(req)['result']
+        res = self.sendReq(req)
+        res = res.result(timeout=5)['result']
         end = res['time']
         delta = res['delta']
         change = end - begin
