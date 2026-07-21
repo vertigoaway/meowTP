@@ -1,6 +1,5 @@
 import compression.zstd as zstd
 import base64
-from multiprocessing import Value
 from typing import Any
 from typing import cast
 import msgpack as msgP
@@ -80,7 +79,7 @@ def decompress(data: bytes, zstdEnabled: bool = True) -> dict:
     if zstdEnabled:
         decompressedData = zstd.decompress(data)
         logger.debug(
-            f"compressed:{len(data)} | decompressed{len(decompressedData)}"
+            f" compressed: {len(data)} | decompressed: {len(decompressedData)}"
         )
     else:
         decompressedData = data
